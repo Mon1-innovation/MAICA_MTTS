@@ -1,3 +1,11 @@
+if __name__ == '__main__':
+    from gevent import monkey
+    monkey.patch_all()
+from quart import Quart, request
+from hypercorn.config import Config
+from hypercorn.asyncio import serve
+import functools
+import asyncio
 import datetime
 import os
 import zipfile
@@ -5,6 +13,16 @@ from io import BytesIO
 import shutil
 import requests
 import time
+
+async def wrap_run_in_exc(loop, func, *args, **kwargs):
+    if not loop:
+        loop = asyncio.get_running_loop()
+    result = await loop.run_in_executor(
+        None, functools.partial(func, *args, **kwargs))
+    return result
+
+
+app = Quart(import_name=__name__)
 
 
 def generate_voice(text):
@@ -97,5 +115,15 @@ def change_voice(timestamp):
 
     return
 
+@app.route('/generate', methods=["POST"])
+async def generation():
+    return 1
 
+def run_http():
+    config = Config()
+    config.bind = ['0.0.0.0:7000']
+    print('MTTS server started!')
+    asyncio.run(serve(app, config))
 
+if __name__ == '__main__':
+    run_http()
