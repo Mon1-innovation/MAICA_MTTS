@@ -4,3 +4,10 @@ If you want to read in English, use a translator.
 此文档是MAICA-MTTS接口的使用文档. 文档内容和API结构可能在此后会有变化, 请开发者关注.
 
 MAICA-MTTS服务的主要功能基于http-post传输, 官方部署的连接地址是https://maicadev.monika.love/mtts.
+官方部署强制要求验证access_token, 私有部署可以关闭.
+
+MAICA-MTTS生成音频的接口位于https://maicadev.monika.love/mtts/generate. 你应当遵循以下格式, 以POST形式上传你要生成的语句:
+    {"access_token": "你的令牌", "content": "你要生成的语句"}
+若生成成功, 接口会返回一段audio/wav格式的音频.
+若生成不成功, 接口会返回形如:
+    {"success": false, "exception": "生成问题"}
