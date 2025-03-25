@@ -15,6 +15,7 @@ import requests
 import httpx
 import json
 import time
+import traceback
 
 async def wrap_run_in_exc(loop, func, *args, **kwargs):
     if not loop:
@@ -79,7 +80,7 @@ async def generate_voice(text):
     body["params_infer_code"] = params_infer_code
 
     try:
-        async with httpx.AsyncClient() as aclient:
+        async with httpx.AsyncClient(proxy=None, timeout=60) as aclient:
             response = await aclient.post(CHATTTS_URL, json=body)
             response.raise_for_status()
         with zipfile.ZipFile(BytesIO(response.content), "r") as zip_ref:
@@ -103,7 +104,7 @@ async def change_voice(timestamp):
     files = {"sample": trg_file}
 
     try:
-        async with httpx.AsyncClient() as aclient:
+        async with httpx.AsyncClient(proxy=None, timeout=60) as aclient:
             response = await aclient.post(SOCSVC_URL, data=data, files=files)
             response.raise_for_status()
         content = response.content
@@ -134,18 +135,20 @@ async def generation():
         data = json.loads(await request.data)
         access_token = data['access_token']
         text_to_gen = data['content']
-        async with httpx.AsyncClient() as aclient:
-            response = await aclient.post(VFC_URL, data={"access_token": access_token})
+        async with httpx.AsyncClient(proxy=None) as aclient:
+            response = await aclient.post(VFC_URL, json={"access_token": access_token})
             response.raise_for_status()
-        json_r = response.json
+        json_r = response.json()
         if json_r['success']:
             # main logic here
             result = await make_mtts(text_to_gen)
-            return send_file(result, as_attachment=True)
+            return await send_file(result, as_attachment=True, mimetype="audio/wav")
         else:
             raise Exception(json_r['exception'])
-    except:
-        return json.dumps({"success": success, "exception": str(exception)}, ensure_ascii=False)
+    except Exception as excepted:
+        traceback.print_exc()
+        success = False
+        return json.dumps({"success": success, "exception": str(excepted)}, ensure_ascii=False)
 
 
 def run_http():
@@ -156,3 +159,4 @@ def run_http():
 
 if __name__ == '__main__':
     run_http()
+    #asyncio.run(generate_voice("I love you"))
