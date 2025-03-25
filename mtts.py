@@ -1,7 +1,7 @@
 if __name__ == '__main__':
     from gevent import monkey
     monkey.patch_all()
-from quart import Quart, request
+from quart import Quart, request, send_file
 from hypercorn.config import Config
 from hypercorn.asyncio import serve
 import functools
@@ -12,6 +12,8 @@ import zipfile
 from io import BytesIO
 import shutil
 import requests
+import httpx
+import json
 import time
 
 async def wrap_run_in_exc(loop, func, *args, **kwargs):
@@ -25,7 +27,7 @@ async def wrap_run_in_exc(loop, func, *args, **kwargs):
 app = Quart(import_name=__name__)
 
 
-def generate_voice(text):
+async def generate_voice(text):
 
     CHATTTS_URL = f"http://127.0.0.1:8000/generate_voice"
     timestamp = f'{time.time():.21f}'
@@ -77,15 +79,15 @@ def generate_voice(text):
     body["params_infer_code"] = params_infer_code
 
     try:
-        response = requests.post(CHATTTS_URL, json=body)
-        response.raise_for_status()
+        async with httpx.AsyncClient() as aclient:
+            response = await aclient.post(CHATTTS_URL, json=body)
+            response.raise_for_status()
         with zipfile.ZipFile(BytesIO(response.content), "r") as zip_ref:
             # save files for each request in a different folder
             dt = datetime.datetime.now()
             tgt = f"./temp/{timestamp}/"
             os.makedirs(tgt, 0o755)
             zip_ref.extractall(tgt)
-            #print("Extracted files into", tgt)
 
     except requests.exceptions.RequestException as e:
         print(f"Request error in TTS status: {e}")
@@ -93,16 +95,17 @@ def generate_voice(text):
     return timestamp
 
 
-def change_voice(timestamp):
+async def change_voice(timestamp):
 
-    url = "http://127.0.0.1:6842/change_voice"
+    SOCSVC_URL = "http://127.0.0.1:6842/change_voice"
     trg_file = open(f"temp/{timestamp}/res.wav", "rb")
     data = {}
     files = {"sample": trg_file}
 
     try:
-        response = requests.post(url=url, data=data, files=files)
-        response.raise_for_status()
+        async with httpx.AsyncClient() as aclient:
+            response = await aclient.post(SOCSVC_URL, data=data, files=files)
+            response.raise_for_status()
         content = response.content
         with open(f"result/{timestamp}.wav", "wb+") as res_f:
             res_f.write(content)
@@ -113,11 +116,37 @@ def change_voice(timestamp):
     finally:
         shutil.rmtree(f"temp/{timestamp}/")
 
-    return
+    return BytesIO(content)
+
+
+async def make_mtts(text):
+    timestamp = await generate_voice(text)
+    voice_bio = await change_voice(timestamp)
+    return voice_bio
+
 
 @app.route('/generate', methods=["POST"])
 async def generation():
-    return 1
+    success = True
+    exception = ''
+    VFC_URL = "https://maicadev.monika.love/api/legality"
+    try:
+        data = json.loads(await request.data)
+        access_token = data['access_token']
+        text_to_gen = data['content']
+        async with httpx.AsyncClient() as aclient:
+            response = await aclient.post(VFC_URL, data={"access_token": access_token})
+            response.raise_for_status()
+        json_r = response.json
+        if json_r['success']:
+            # main logic here
+            result = await make_mtts(text_to_gen)
+            return send_file(result, as_attachment=True)
+        else:
+            raise Exception(json_r['exception'])
+    except:
+        return json.dumps({"success": success, "exception": str(exception)}, ensure_ascii=False)
+
 
 def run_http():
     config = Config()
