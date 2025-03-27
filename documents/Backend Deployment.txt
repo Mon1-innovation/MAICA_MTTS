@@ -50,6 +50,10 @@ If you want to read in English, use a translator.
 
 #接下来, 将MAICA-MTTS服务端文件注入以上项目:
     cd ..
+    wget "https://huggingface.co/edgeinfinity/MTTSv0-VoiceClone/resolve/main/G_10400.pth?download=true" -OutFile "./MAICA_MTTS/injection/logs/44k/G_10400.pth"
+    #若为linux环境, 使用以下命令:
+        wget https://huggingface.co/edgeinfinity/MTTSv0-VoiceClone/resolve/main/G_10400.pth?download=true -O ./MAICA_MTTS/injection/logs/44k/G_10400.pth
+    #其余不再赘述.
     cp -Path "./MAICA_MTTS/injection/logs/*" -Destination "./so-vits-svc/logs" -Recurse
     #若为linux环境, 使用以下命令:
         cp -rf ./MAICA_MTTS/injection/logs/* ./so-vits-svc/logs
