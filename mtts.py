@@ -126,6 +126,11 @@ async def make_mtts(text):
     return voice_bio
 
 
+def first_run_init():
+    for d in ['./temp/', './result/']:
+        os.makedirs(d, 0o755, True)
+
+
 @app.route('/generate', methods=["POST"])
 async def generation():
     success = True
@@ -158,5 +163,6 @@ def run_http():
     asyncio.run(serve(app, config))
 
 if __name__ == '__main__':
+    first_run_init()
     run_http()
     #asyncio.run(generate_voice("I love you"))
