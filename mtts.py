@@ -17,6 +17,8 @@ import json
 import time
 import traceback
 
+from loadenv import load_env
+
 async def wrap_run_in_exc(loop, func, *args, **kwargs):
     if not loop:
         loop = asyncio.get_running_loop()
@@ -30,7 +32,7 @@ app = Quart(import_name=__name__)
 
 async def generate_voice(text):
 
-    CHATTTS_URL = f"http://127.0.0.1:8000/generate_voice"
+    CHATTTS_URL = load_env('CHATTTS_URL')
     timestamp = f'{time.time():.21f}'
 
     # main infer params
@@ -98,7 +100,7 @@ async def generate_voice(text):
 
 async def change_voice(timestamp):
 
-    SOCSVC_URL = "http://127.0.0.1:6842/change_voice"
+    SOCSVC_URL = load_env('SOCSVC_URL')
     trg_file = open(f"temp/{timestamp}/res.wav", "rb")
     data = {}
     files = {"sample": trg_file}
@@ -135,15 +137,22 @@ def first_run_init():
 async def generation():
     success = True
     exception = ''
-    VFC_URL = "https://maicadev.monika.love/api/legality"
+    if load_env('LOGIN_VERIFICATION') != 'disabled':
+        vfc_enable = True
+        VFC_URL = load_env('VFC_URL')
+    else:
+        vfc_enable = False
     try:
         data = json.loads(await request.data)
-        access_token = data['access_token']
         text_to_gen = data['content']
-        async with httpx.AsyncClient(proxy=None) as aclient:
-            response = await aclient.post(VFC_URL, json={"access_token": access_token})
-            response.raise_for_status()
-        json_r = response.json()
+        if vfc_enable:
+            access_token = data['access_token']
+            async with httpx.AsyncClient(proxy=None) as aclient:
+                response = await aclient.post(VFC_URL, json={"access_token": access_token})
+                response.raise_for_status()
+            json_r = response.json()
+        else:
+            json_r = {"success": True}
         if json_r['success']:
             # main logic here
             result = await make_mtts(text_to_gen)
