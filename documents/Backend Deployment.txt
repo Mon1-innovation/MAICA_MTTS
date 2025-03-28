@@ -47,6 +47,7 @@ If you want to read in English, use a translator.
 #接下来, 为MAICA-MTTS安装依赖:
     cd ../MAICA_MTTS
     python3.12 -m pip install -r requirements.txt
+    cd ..
 
 #接下来, 将MAICA-MTTS服务端文件注入以上项目:
     cd ..

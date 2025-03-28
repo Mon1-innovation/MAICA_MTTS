@@ -165,6 +165,14 @@ async def generation():
         return json.dumps({"success": success, "exception": str(excepted)}, ensure_ascii=False)
 
 
+@app.route('/strategy', methods=["POST"])
+async def strats():
+    success = True
+    exception = ''
+    strategy = load_env('LOAD_STRATS')
+    return json.dumps({"success": success, "exception": str(exception), "strategy": strategy}, ensure_ascii=False)
+
+
 def run_http():
     config = Config()
     config.bind = ['0.0.0.0:7000']
