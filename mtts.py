@@ -115,8 +115,8 @@ async def change_voice(timestamp):
             response = await aclient.post(SOCSVC_URL, data=data, files=files)
             response.raise_for_status()
         content = response.content
-        with open(f"result/{timestamp}.wav", "wb+") as res_f:
-            res_f.write(content)
+        # with open(f"result/{timestamp}.wav", "wb+") as res_f:
+        #     res_f.write(content)
 
     except requests.exceptions.RequestException as e:
         print(f"Request error in SVC status: {e}")
