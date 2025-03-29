@@ -2,6 +2,7 @@ if __name__ == '__main__':
     from gevent import monkey
     monkey.patch_all()
 from quart import Quart, request, send_file
+from quart_cors import cors
 from hypercorn.config import Config
 from hypercorn.asyncio import serve
 import functools
@@ -31,6 +32,7 @@ async def wrap_run_in_exc(loop, func, *args, **kwargs):
 
 
 app = Quart(import_name=__name__)
+app = cors(app)
 
 
 async def generate_voice(text):
@@ -127,16 +129,16 @@ async def change_voice(timestamp):
 
 async def make_mtts(text, use_cache=True):
     if use_cache:
-        chrs = await wrap_run_in_exc(None, hash_256, text)
+        chrs = await wrap_run_in_exc(None, hash_256, text.encode())
         try:
             with open(f'./result/{chrs}.wav', 'rb') as f:
-                voice_bio = f.read()
+                voice_bio = BytesIO(f.read())
             print('Cache hit')
         except:
             timestamp = await generate_voice(text)
             voice_bio = await change_voice(timestamp)
             with open(f'./result/{chrs}.wav', 'wb+') as f:
-                f.write(voice_bio)
+                f.write(voice_bio.getbuffer())
     else:
         timestamp = await generate_voice(text)
         voice_bio = await change_voice(timestamp)
@@ -160,10 +162,10 @@ def first_run_init():
 def every_run_init():
     def purge_cache(keep_time=load_env('KEEP_POLICY')):
         for cache_file in os.scandir('./result'):
-            if cache_file.is_dir():
-                if ((time.time() - os.path.getatime(cache_file)) / 3600) >= keep_time:
-                    os.remove(cache_file)
-                    print(f'Removed file {os.path.split(cache_file)[1]}')
+            if not cache_file.name.startswith('.') and cache_file.is_file():
+                if ((time.time() - cache_file.stat().st_atime) / 3600) >= keep_time:
+                    os.remove(cache_file.path)
+                    print(f'Removed file {os.path.split(cache_file.path)[1]}')
     schedule.every(1).day.at("04:00").do(purge_cache)
 
 
