@@ -15,7 +15,10 @@ import requests
 import httpx
 import json
 import time
+import datetime
 import traceback
+import hashlib
+import schedule
 
 from loadenv import load_env
 
@@ -122,15 +125,46 @@ async def change_voice(timestamp):
     return BytesIO(content)
 
 
-async def make_mtts(text):
-    timestamp = await generate_voice(text)
-    voice_bio = await change_voice(timestamp)
+async def make_mtts(text, use_cache=True):
+    if use_cache:
+        chrs = await wrap_run_in_exc(None, hash_256, text)
+        try:
+            with open(f'./result/{chrs}.wav', 'rb') as f:
+                voice_bio = f.read()
+            print('Cache hit')
+        except:
+            timestamp = await generate_voice(text)
+            voice_bio = await change_voice(timestamp)
+            with open(f'./result/{chrs}.wav', 'wb+') as f:
+                f.write(voice_bio)
+    else:
+        timestamp = await generate_voice(text)
+        voice_bio = await change_voice(timestamp)
+    purge_unused_cache()
     return voice_bio
+
+
+def purge_unused_cache():
+    schedule.run_pending()
+
+
+def hash_256(s):
+    return hashlib.new('sha256', s).hexdigest()
 
 
 def first_run_init():
     for d in ['./temp/', './result/']:
         os.makedirs(d, 0o755, True)
+
+
+def every_run_init():
+    def purge_cache(keep_time=load_env('KEEP_POLICY')):
+        for cache_file in os.scandir('./result'):
+            if cache_file.is_dir():
+                if ((time.time() - os.path.getatime(cache_file)) / 3600) >= keep_time:
+                    os.remove(cache_file)
+                    print(f'Removed file {os.path.split(cache_file)[1]}')
+    schedule.every(1).day.at("04:00").do(purge_cache)
 
 
 @app.route('/generate', methods=["POST"])
@@ -181,5 +215,6 @@ def run_http():
 
 if __name__ == '__main__':
     first_run_init()
+    every_run_init()
     run_http()
     #asyncio.run(generate_voice("I love you"))
