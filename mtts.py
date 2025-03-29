@@ -181,6 +181,10 @@ async def generation():
     try:
         data = json.loads(await request.data)
         text_to_gen = data['content']
+        try:
+            cache_strats = bool(data['cache_policy'])
+        except:
+            cache_strats = True
         if vfc_enable:
             access_token = data['access_token']
             async with httpx.AsyncClient(proxy=None) as aclient:
@@ -191,7 +195,8 @@ async def generation():
             json_r = {"success": True}
         if json_r['success']:
             # main logic here
-            result = await make_mtts(text_to_gen)
+            print(f'Generating speech: {text_to_gen}')
+            result = await make_mtts(text_to_gen, cache_strats)
             return await send_file(result, as_attachment=True, mimetype="audio/wav")
         else:
             raise Exception(json_r['exception'])
