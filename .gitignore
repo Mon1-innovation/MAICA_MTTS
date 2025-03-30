@@ -1,3 +1,4 @@
 /result
 /temp
 .env
+*.code-workspace
