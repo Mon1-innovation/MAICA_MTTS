@@ -24,12 +24,12 @@ import argparse
 parser = argparse.ArgumentParser(description='sovits4 inference')
 
 # 一定要设置的部分
-parser.add_argument('-m', '--model_path', type=str, default="logs/44k/G_10400.pth", help='模型路径')
-parser.add_argument('-c', '--config_path', type=str, default="logs/44k/config.json", help='配置文件路径')
+parser.add_argument('-m', '--model_path', type=str, default="logs/44k/G_20000.pth", help='模型路径')
+parser.add_argument('-c', '--config_path', type=str, default="logs/44k/G_20000.json", help='配置文件路径')
 parser.add_argument('-cl', '--clip', type=float, default=0, help='音频强制切片，默认0为自动切片，单位为秒/s')
 parser.add_argument('-n', '--clean_names', type=str, nargs='+', default=["君の知らない物語-src.wav"], help='wav文件名列表，放在raw文件夹下')
 parser.add_argument('-t', '--trans', type=int, nargs='+', default=[0], help='音高调整，支持正负（半音）')
-parser.add_argument('-s', '--spk_list', type=str, nargs='+', default=['Monika'], help='合成目标说话人名称')
+parser.add_argument('-s', '--spk_list', type=str, nargs='+', default=['monika'], help='合成目标说话人名称')
 
 # 可选项部分
 parser.add_argument('-a', '--auto_predict_f0', action='store_true', default=False, help='语音转换自动预测音高，转换歌声时不要打开这个会严重跑调')
@@ -41,7 +41,7 @@ parser.add_argument('-eh', '--enhance', action='store_true', default=False, help
 parser.add_argument('-shd', '--shallow_diffusion', action='store_true', default=False, help='是否使用浅层扩散，使用后可解决一部分电音问题，默认关闭，该选项打开时，NSF_HIFIGAN增强器将会被禁止')
 parser.add_argument('-usm', '--use_spk_mix', action='store_true', default=False, help='是否使用角色融合')
 parser.add_argument('-lea', '--loudness_envelope_adjustment', type=float, default=1, help='输入源响度包络替换输出响度包络融合比例，越靠近1越使用输出响度包络')
-parser.add_argument('-fr', '--feature_retrieval', action='store_true', default=False, help='是否使用特征检索，如果使用聚类模型将被禁用，且cm与cr参数将会变成特征检索的索引路径与混合比例')
+parser.add_argument('-fr', '--feature_retrieval', action='store_true', default=True, help='是否使用特征检索，如果使用聚类模型将被禁用，且cm与cr参数将会变成特征检索的索引路径与混合比例')
 
 # 浅扩散设置
 parser.add_argument('-dm', '--diffusion_model_path', type=str, default="logs/44k/diffusion/model_0.pt", help='扩散模型路径')
