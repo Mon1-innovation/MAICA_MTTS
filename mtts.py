@@ -93,7 +93,7 @@ async def generate_voice(text):
         with zipfile.ZipFile(BytesIO(response.content), "r") as zip_ref:
             # save files for each request in a different folder
             dt = datetime.datetime.now()
-            tgt = f"./temp/{timestamp}/"
+            tgt = f"{os.path.dirname(__file__)}/temp/{timestamp}/"
             os.makedirs(tgt, 0o755)
             zip_ref.extractall(tgt)
 
@@ -106,7 +106,7 @@ async def generate_voice(text):
 async def change_voice(timestamp):
 
     SOCSVC_URL = load_env('SOCSVC_URL')
-    trg_file = open(f"temp/{timestamp}/res.wav", "rb")
+    trg_file = open(f"{os.path.dirname(__file__)}/temp/{timestamp}/res.wav", "rb")
     data = {}
     files = {"sample": trg_file}
 
@@ -115,7 +115,7 @@ async def change_voice(timestamp):
             response = await aclient.post(SOCSVC_URL, data=data, files=files)
             response.raise_for_status()
         content = response.content
-        # with open(f"result/{timestamp}.wav", "wb+") as res_f:
+        # with open(f"{os.path.dirname(__file__)}/result/{timestamp}.wav", "wb+") as res_f:
         #     res_f.write(content)
 
     except requests.exceptions.RequestException as e:
@@ -131,13 +131,13 @@ async def make_mtts(text, use_cache=True):
     if use_cache:
         chrs = await wrap_run_in_exc(None, hash_256, text.encode())
         try:
-            with open(f'./result/{chrs}.wav', 'rb') as f:
+            with open(f'{os.path.dirname(__file__)}/result/{chrs}.wav', 'rb') as f:
                 voice_bio = BytesIO(f.read())
             print('Cache hit')
         except:
             timestamp = await generate_voice(text)
             voice_bio = await change_voice(timestamp)
-            with open(f'./result/{chrs}.wav', 'wb+') as f:
+            with open(f'{os.path.dirname(__file__)}/result/{chrs}.wav', 'wb+') as f:
                 f.write(voice_bio.getbuffer())
     else:
         timestamp = await generate_voice(text)
@@ -155,13 +155,13 @@ def hash_256(s):
 
 
 def first_run_init():
-    for d in ['./temp/', './result/']:
+    for d in [f'{os.path.dirname(__file__)}/temp/', f'{os.path.dirname(__file__)}/result/']:
         os.makedirs(d, 0o755, True)
 
 
 def every_run_init():
     def purge_cache(keep_time=load_env('KEEP_POLICY')):
-        for cache_file in os.scandir('./result'):
+        for cache_file in os.scandir(f'{os.path.dirname(__file__)}/result'):
             if not cache_file.name.startswith('.') and cache_file.is_file():
                 if ((time.time() - cache_file.stat().st_atime) / 3600) >= float(keep_time):
                     os.remove(cache_file.path)

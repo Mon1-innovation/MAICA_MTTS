@@ -24,8 +24,8 @@ import argparse
 parser = argparse.ArgumentParser(description='sovits4 inference')
 
 # 一定要设置的部分
-parser.add_argument('-m', '--model_path', type=str, default="logs/44k/G_20000.pth", help='模型路径')
-parser.add_argument('-c', '--config_path', type=str, default="logs/44k/G_20000.json", help='配置文件路径')
+parser.add_argument('-m', '--model_path', type=str, default=f"{os.path.dirname(__file__)}/logs/44k/G_20000.pth", help='模型路径')
+parser.add_argument('-c', '--config_path', type=str, default=f"{os.path.dirname(__file__)}/logs/44k/G_20000.json", help='配置文件路径')
 parser.add_argument('-cl', '--clip', type=float, default=0, help='音频强制切片，默认0为自动切片，单位为秒/s')
 parser.add_argument('-n', '--clean_names', type=str, nargs='+', default=["君の知らない物語-src.wav"], help='wav文件名列表，放在raw文件夹下')
 parser.add_argument('-t', '--trans', type=int, nargs='+', default=[0], help='音高调整，支持正负（半音）')
@@ -44,8 +44,8 @@ parser.add_argument('-lea', '--loudness_envelope_adjustment', type=float, defaul
 parser.add_argument('-fr', '--feature_retrieval', action='store_true', default=True, help='是否使用特征检索，如果使用聚类模型将被禁用，且cm与cr参数将会变成特征检索的索引路径与混合比例')
 
 # 浅扩散设置
-parser.add_argument('-dm', '--diffusion_model_path', type=str, default="logs/44k/diffusion/model_0.pt", help='扩散模型路径')
-parser.add_argument('-dc', '--diffusion_config_path', type=str, default="logs/44k/diffusion/config.yaml", help='扩散模型配置文件路径')
+parser.add_argument('-dm', '--diffusion_model_path', type=str, default=f"{os.path.dirname(__file__)}/logs/44k/diffusion/model_0.pt", help='扩散模型路径')
+parser.add_argument('-dc', '--diffusion_config_path', type=str, default=f"{os.path.dirname(__file__)}/logs/44k/diffusion/config.yaml", help='扩散模型配置文件路径')
 parser.add_argument('-ks', '--k_step', type=int, default=100, help='扩散步数，越大越接近扩散模型的结果，默认100')
 parser.add_argument('-se', '--second_encoding', action='store_true', default=False, help='二次编码，浅扩散前会对原始音频进行二次编码，玄学选项，有时候效果好，有时候效果差')
 parser.add_argument('-od', '--only_diffusion', action='store_true', default=False, help='纯扩散模式，该模式不会加载sovits模型，以扩散模型推理')
@@ -92,9 +92,9 @@ loudness_envelope_adjustment = args.loudness_envelope_adjustment
 if cluster_infer_ratio != 0:
     if args.cluster_model_path == "":
         if args.feature_retrieval:  # 若指定了占比但没有指定模型路径，则按是否使用特征检索分配默认的模型路径
-            args.cluster_model_path = "logs/44k/feature_and_index.pkl"
+            args.cluster_model_path = f"{os.path.dirname(__file__)}/logs/44k/feature_and_index.pkl"
         else:
-            args.cluster_model_path = "logs/44k/kmeans_10000.pt"
+            args.cluster_model_path = f"{os.path.dirname(__file__)}/logs/44k/kmeans_10000.pt"
 else:  # 若未指定占比，则无论是否指定模型路径，都将其置空以避免之后的模型加载
     args.cluster_model_path = ""
 
@@ -107,13 +107,13 @@ def voice_change_model():
     timestamp = f'{time.time():.21f}'
 
     # 先缓存
-    with open(f"temp/{timestamp}.wav", "wb+") as cache_f:
+    with open(f"{os.path.dirname(__file__)}/temp/{timestamp}.wav", "wb+") as cache_f:
         cache_f.write(input_wav_cache)
 
     # 模型推理
     try:
         kwarg = {
-            "raw_audio_path" : f"temp/{timestamp}.wav",
+            "raw_audio_path" : f"{os.path.dirname(__file__)}/temp/{timestamp}.wav",
             "spk" : spk_list[0],
             "tran" : trans[0],
             "slice_db" : slice_db,
@@ -137,7 +137,7 @@ def voice_change_model():
         import traceback
         traceback.print_exc()
     finally:
-        os.remove(f"temp/{timestamp}.wav")
+        os.remove(f"{os.path.dirname(__file__)}/temp/{timestamp}.wav")
 
     # 返回音频
     out_wav_path = io.BytesIO()

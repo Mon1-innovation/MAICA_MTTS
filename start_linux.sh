@@ -1,0 +1,1 @@
+source ../t_act.sh; python3.10 -m fastapi dev ../tts/ChatTTS/examples/api/tts_serve.py --port 8000 & source ../s_act.sh; python3.8 ../svc/so-vits-svc/svc_serve.py & source ../m_act.sh; python3.12 ../MAICA_MTTS/mtts.py
