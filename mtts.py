@@ -161,11 +161,13 @@ def first_run_init():
 
 def every_run_init():
     def purge_cache(keep_time=load_env('KEEP_POLICY')):
-        for cache_file in os.scandir(f'{os.path.dirname(__file__)}/result'):
-            if not cache_file.name.startswith('.') and cache_file.is_file():
-                if ((time.time() - cache_file.stat().st_atime) / 3600) >= float(keep_time):
-                    os.remove(cache_file.path)
-                    print(f'Removed file {os.path.split(cache_file.path)[1]}')
+        if float(keep_time) >= 0:
+            for cache_file in os.scandir(f'{os.path.dirname(__file__)}/result'):
+                if not cache_file.name.startswith('.') and cache_file.is_file():
+                    if ((time.time() - cache_file.stat().st_atime) / 3600) >= float(keep_time):
+                        os.remove(cache_file.path)
+                        print(f'Removed file {os.path.split(cache_file.path)[1]}')
+    purge_cache()
     schedule.every(1).day.at("04:00").do(purge_cache)
 
 

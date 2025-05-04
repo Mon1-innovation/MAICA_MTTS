@@ -22,13 +22,16 @@ If you want to read in English, use a translator.
 #如果一切就绪, 在任意目录下运行python3.8 -V 应当回显python3.8.x的版本号, 剩余同理.
 
 #接下来, 你需要创建目录容纳tts, svc与MAICA-MTTS后端三个项目:
+    # ~/
     mkdir ./mtts
     cd mtts
 #请确保你已经安装git, 并能够连接到github, 具体不再赘述.
+    # ~/mtts/
     git clone https://github.com/2noise/ChatTTS.git
     git clone https://github.com/svc-develop-team/so-vits-svc.git
     git clone https://github.com/Mon1-innovation/MAICA_MTTS.git
 #为稳定起见, 固定tts与svc项目到已知版本:
+    # ~/mtts/
     cd ChatTTS
     git checkout tags/v0.2.3
     cd ../so-vits-svc
@@ -36,6 +39,7 @@ If you want to read in English, use a translator.
     cd ..
 
 #接下来, 按照tts项目需求安装依赖:
+    # ~/mtts/
     cd ChatTTS
     python3.10 -m pip install -r requirements.txt
     python3.10 -m pip install -e .
@@ -50,7 +54,7 @@ If you want to read in English, use a translator.
     cd ..
 
 #接下来, 将MAICA-MTTS服务端文件注入以上项目:
-    cd ..
+    # ~/mtts/
     wget "https://huggingface.co/edgeinfinity/MTTSv0-VoiceClone/resolve/main/G_20000.pth?download=true" -OutFile "./MAICA_MTTS/injection/logs/44k/G_20000.pth"
     #若为linux环境, 使用以下命令:
         wget https://huggingface.co/edgeinfinity/MTTSv0-VoiceClone/resolve/main/G_20000.pth?download=true -O ./MAICA_MTTS/injection/logs/44k/G_20000.pth
@@ -60,11 +64,16 @@ If you want to read in English, use a translator.
     #若为linux环境, 使用以下命令:
         cp -rf ./MAICA_MTTS/injection/logs/* ./so-vits-svc/logs
     #其余不再赘述.
+    cp -Path "./MAICA_MTTS/injection/vencoder/*" -Destination "./so-vits-svc/vencoder"
     cp -Path "./MAICA_MTTS/injection/svc_serve.py" -Destination "./so-vits-svc"
     cp -Path "./MAICA_MTTS/injection/tts_serve.py" -Destination "./ChatTTS/examples/api"
+    #以下是一些虚拟环境占位符, 没有内容是正常的. 如果你使用了venv可以自行填补.
+    cp -Path "./MAICA_MTTS/injection/mtts/*" -Destination "./"
 
 #创建设置文件:
-    touch ./MAICA_MTTS/.env
+    # ~/mtts/
+    cd ./MAICA_MTTS
+    touch .env
 #至此基本安装已经完成.
 
 #在启动MAICA-MTTS服务端前, 你需要为MAICA-MTTS配置设置项目. 你需要在.env中填入以下内容:
@@ -77,10 +86,9 @@ CHATTTS_URL = "http://127.0.0.1:8000/generate_voice"
     #tts接口内部地址, 可保持默认.
 SOCSVC_URL = "http://127.0.0.1:6842/change_voice"
     #svc接口内部地址, 可保持默认.
+KEEP_POLICY = "168"
+    #生成缓存的寿命*小时, 超时未被读取过的缓存会被清除. 设为0不保留多余缓存, 设为-1不清理缓存.
 
-#接下来, 启动tts与svc服务端:
-    python3.8 ./so-vits-svc/svc_serve.py
-    python3.10 -m fastapi dev ./ChatTTS/examples/api/tts_serve.py --port 8000
-
-#如果上述配置全部顺利完成, 你可以启动MAICA-MTTS后端了:
-    python3.12 ./MAICA_MTTS/mtts.py
+#接下来, 你可以启动MAICA-MTTS后端了:
+    # ~/mtts/MAICA_MTTS/
+    bash start_linux.sh
