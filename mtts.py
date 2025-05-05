@@ -20,6 +20,7 @@ import datetime
 import traceback
 import hashlib
 import schedule
+import re
 
 from loadenv import load_env
 
@@ -197,6 +198,11 @@ async def generation():
             json_r = {"success": True}
         if json_r['success']:
             # main logic here
+            # pre-filtering first
+            text_to_gen = re.sub(r'\.{2,}', '.', text_to_gen)
+
+
+
             print(f'Generating speech: {text_to_gen}')
             result = await make_mtts(text_to_gen, cache_strats)
             return await send_file(result, as_attachment=True, mimetype="audio/wav")
