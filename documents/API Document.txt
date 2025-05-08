@@ -7,8 +7,9 @@ MAICA-MTTS服务的主要功能基于http-post传输, 官方部署的连接地�
 官方部署强制要求验证access_token, 私有部署可以关闭.
 
 MAICA-MTTS生成音频的接口位于https://maicadev.monika.love/mtts/generate. 你应当遵循以下格式, 以POST形式上传你要生成的语句:
-    {"access_token": "你的令牌", "content": "你要生成的语句", "emotion": "表情", "target_lang": "预测语言", "cache_policy": true}
+    {"access_token": "你的令牌", "content": "你要生成的语句", "emotion": "表情", "conversion": true, "target_lang": "预测语言", "cache_policy": true}
     emotion代表该句对应表情, 用中文传入, 可用的表情与MAICA保持一致.
+    conversion代表是否使用svc模型. svc模型表现不稳定, 但不启用的话意义何在呢.
     target_lang代表预计使用的目标语言, 会影响语句预处理模式.
     cache_policy代表后端是否缓存该音频, 默认为true. 对于普遍的固有文本, 应当设置为true, 反之设为false.
 若生成成功, 接口会返回一段audio/wav格式的音频.

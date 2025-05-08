@@ -36,7 +36,7 @@ app = Quart(import_name=__name__)
 app = cors(app)
 
 
-async def generate_voice(text, style):
+async def generate_voice(text, style, use_svc, debug=None):
 
     CHATTTS_URL = load_env('CHATTTS_URL')
     timestamp = f'{time.time():.21f}'
@@ -73,6 +73,100 @@ async def generate_voice(text, style):
         "可爱": "affectionate"
     }
 
+    emotion_oral = {
+        "微笑": "3",
+        "担心": "2",
+        "笑": "3",
+        "思考": "1",
+        "开心": "4",
+        "生气": "4",
+        "脸红": "4",
+        "凝视": "2",
+        "沉重": "2",
+        "憧憬": "3",
+        "惊喜": "4",
+        "尴尬": "4",
+        "意味深长": "3",
+        "惊讶": "3",
+        "轻松": "4",
+        "害羞": "4",
+        "急切": "4",
+        "得意": "4",
+        "不满": "2",
+        "严肃": "1",
+        "感动": "3",
+        "激动": "4",
+        "宠爱": "3",
+        "眨眼": "3",
+        "伤心": "2",
+        "厌恶": "2",
+        "害怕": "1",
+        "可爱": "3"
+    }
+
+    emotion_laugh = {
+        "微笑": "0",
+        "担心": "0",
+        "笑": "1",
+        "思考": "0",
+        "开心": "1",
+        "生气": "0",
+        "脸红": "0",
+        "凝视": "0",
+        "沉重": "0",
+        "憧憬": "0",
+        "惊喜": "0",
+        "尴尬": "0",
+        "意味深长": "1",
+        "惊讶": "0",
+        "轻松": "1",
+        "害羞": "0",
+        "急切": "0",
+        "得意": "1",
+        "不满": "0",
+        "严肃": "0",
+        "感动": "0",
+        "激动": "0",
+        "宠爱": "0",
+        "眨眼": "1",
+        "伤心": "0",
+        "厌恶": "0",
+        "害怕": "0",
+        "可爱": "0"
+    }
+
+    emotion_break = {
+        "微笑": "5",
+        "担心": "6",
+        "笑": "4",
+        "思考": "6",
+        "开心": "5",
+        "生气": "3",
+        "脸红": "5",
+        "凝视": "6",
+        "沉重": "6",
+        "憧憬": "5",
+        "惊喜": "4",
+        "尴尬": "5",
+        "意味深长": "6",
+        "惊讶": "5",
+        "轻松": "5",
+        "害羞": "5",
+        "急切": "3",
+        "得意": "5",
+        "不满": "5",
+        "严肃": "5",
+        "感动": "5",
+        "激动": "4",
+        "宠爱": "5",
+        "眨眼": "5",
+        "伤心": "6",
+        "厌恶": "5",
+        "害怕": "4",
+        "可爱": "5"
+    }
+
+
     # main infer params
     # body = {
     #     "input": text,
@@ -86,16 +180,19 @@ async def generate_voice(text, style):
 
     body = {
         "text": text,
-        "spk": "严肃女领导",
+        "spk": "Bob" if use_svc else "嗲嗲的很酥麻",
         "style": emotion_trans[style],
-        "temperature": 0.3,
+        "temperature": 0.6 if use_svc else 0.55,
         "top_k": 20,
-        "top_p": 0.6,
+        "top_p": 0.7,
         "format": "wav",
-        "prefix": "[oral_1][laugh_0][break_6]",
+        "prefix": f"[oral_{emotion_oral[style]}][laugh_{emotion_laugh[style]}][break_{emotion_break[style]}]",
         "bs": 8,
         "no_cache": True
     }
+
+    if debug:
+        body.update(debug)
 
     try:
         async with httpx.AsyncClient(proxy=None, timeout=60) as aclient:
@@ -118,16 +215,17 @@ async def generate_voice(text, style):
     return timestamp
 
 
-async def change_voice(timestamp):
+async def change_voice(timestamp, use_svc, debug=None):
 
     SOCSVC_URL = load_env('SOCSVC_URL')
+    SKIPSVC_URL = load_env('SKIPSVC_URL')
     trg_file = open(f"{os.path.dirname(__file__)}/temp/{timestamp}.wav", "rb")
     data = {}
     files = {"sample": trg_file}
-
+    url = SOCSVC_URL if use_svc else SKIPSVC_URL
     try:
         async with httpx.AsyncClient(proxy=None, timeout=60) as aclient:
-            response = await aclient.post(SOCSVC_URL, data=data, files=files)
+            response = await aclient.post(url, data=data, files=files)
             response.raise_for_status()
         content = response.content
         # with open(f"{os.path.dirname(__file__)}/result/{timestamp}.wav", "wb+") as res_f:
@@ -137,27 +235,28 @@ async def change_voice(timestamp):
         print(f"Request error in SVC status: {e}")
 
     finally:
-        os.remove(f"{os.path.dirname(__file__)}/temp/{timestamp}.wav")
+        if not debug:
+            os.remove(f"{os.path.dirname(__file__)}/temp/{timestamp}.wav")
         pass
 
     return BytesIO(content)
 
 
-async def make_mtts(text, style, use_cache=True):
+async def make_mtts(text, style, use_svc=True, debug=None, use_cache=True):
     if use_cache:
-        chrs = await wrap_run_in_exc(None, hash_256, (style + text).encode())
+        chrs = await wrap_run_in_exc(None, hash_256, (int(use_svc) + '|' + style + '|' + text).encode())
         try:
             with open(f'{os.path.dirname(__file__)}/result/{chrs}.ogg', 'rb') as f:
                 voice_bio = BytesIO(f.read())
             print('Cache hit')
         except:
-            timestamp = await generate_voice(text, style)
-            voice_bio = await change_voice(timestamp)
+            timestamp = await generate_voice(text, style, use_svc, debug)
+            voice_bio = await change_voice(timestamp, use_svc, debug)
             with open(f'{os.path.dirname(__file__)}/result/{chrs}.ogg', 'wb+') as f:
                 f.write(voice_bio.getbuffer())
     else:
-        timestamp = await generate_voice(text, style)
-        voice_bio = await change_voice(timestamp)
+        timestamp = await generate_voice(text, style, use_svc, debug)
+        voice_bio = await change_voice(timestamp, use_svc, debug)
     purge_unused_cache()
     return voice_bio
 
@@ -206,12 +305,20 @@ async def generation():
         except:
             style_to_att = '微笑'
         try:
+            enable_svc = bool(data['conversion'])
+        except:
+            enable_svc = True
+        try:
             target_lang = data['target_lang']
             if not target_lang:
                 raise Exception('use default')
             target_lang = 'zh' if target_lang == 'zh' else 'en'
         except:
             target_lang = 'zh'
+        try:
+            debug = data['debug']
+        except:
+            debug = None
         try:
             cache_strats = bool(data['cache_policy'])
         except:
@@ -229,7 +336,7 @@ async def generation():
 
             # pre-filtering first
             text_to_gen = re.sub(r'\.{2,}', '.', text_to_gen)
-            text_to_gen = re.sub(r'\s', '', text_to_gen)
+            text_to_gen = re.sub(r'\s+', ' ', text_to_gen)
             pattern_numeric = re.compile(r'[0-9]')
             pattern_content = re.compile(r'[一-龥A-Za-z]')
 
@@ -257,8 +364,10 @@ async def generation():
                                 new_cont = '，'
                         text_to_gen = text_to_gen[:pos] + new_cont + text_to_gen[(pos+1):]
 
+            text_to_gen += '[lbreak]'
+
             print(f'Generating speech--{style_to_att}: {text_to_gen}')
-            result = await make_mtts(text_to_gen, style_to_att, cache_strats)
+            result = await make_mtts(text_to_gen, style_to_att, enable_svc, debug, cache_strats)
             return await send_file(result, as_attachment=True, mimetype="audio/ogg")
         else:
             raise Exception(json_r['exception'])
