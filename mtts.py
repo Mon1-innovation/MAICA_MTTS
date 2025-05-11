@@ -244,7 +244,7 @@ async def change_voice(timestamp, use_svc, debug=None):
 
 async def make_mtts(text, style, use_svc=True, debug=None, use_cache=True):
     if use_cache:
-        chrs = await wrap_run_in_exc(None, hash_256, (int(use_svc) + '|' + style + '|' + text).encode())
+        chrs = await wrap_run_in_exc(None, hash_256, (str(int(use_svc)) + '|' + style + '|' + text).encode())
         try:
             with open(f'{os.path.dirname(__file__)}/result/{chrs}.ogg', 'rb') as f:
                 voice_bio = BytesIO(f.read())
