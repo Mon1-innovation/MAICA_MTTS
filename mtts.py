@@ -182,7 +182,7 @@ async def generate_voice(text, style, use_svc, debug=None):
         "text": text,
         "spk": "Bob" if use_svc else "嗲嗲的很酥麻",
         "style": emotion_trans[style],
-        "temperature": 0.6 if use_svc else 0.55,
+        "temperature": 0.4 if use_svc else 0.55,
         "top_k": 20,
         "top_p": 0.7,
         "format": "wav",
@@ -339,6 +339,13 @@ async def generation():
             text_to_gen = re.sub(r'\s+', ' ', text_to_gen)
             pattern_numeric = re.compile(r'[0-9]')
             pattern_content = re.compile(r'[一-龥A-Za-z]')
+            pattern_punc_equal_fbreak = re.compile(r"[~!?~！…？]+")
+            pattern_punc_equal_hbreak = re.compile(r"[:\"{}\/;'\\[\]·（）—{}《》：“”【】、；‘']+")
+            pattern_punc_equal_none = re.compile(r"[`@#$%^&*()_\-+=<>|@#￥%&*\-+=|]+")
+            text_to_gen = pattern_punc_equal_fbreak.sub('.', text_to_gen)
+            text_to_gen = pattern_punc_equal_hbreak.sub(',', text_to_gen)
+            text_to_gen = pattern_punc_equal_none.sub('', text_to_gen)
+
 
             def is_decimal(five_related_cells):
                 nonlocal pattern_content, pattern_numeric
