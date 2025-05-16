@@ -335,7 +335,7 @@ async def generation():
             # main logic here
 
             # pre-filtering first
-            text_to_gen = re.sub(r'\.{2,}', '.', text_to_gen)
+            text_to_gen = re.sub(r'\[.。]{2,}', '.', text_to_gen)
             text_to_gen = re.sub(r'\s+', ' ', text_to_gen)
             pattern_numeric = re.compile(r'[0-9]')
             pattern_content = re.compile(r'[一-龥A-Za-z]')
@@ -370,6 +370,18 @@ async def generation():
                             case _:
                                 new_cont = '，'
                         text_to_gen = text_to_gen[:pos] + new_cont + text_to_gen[(pos+1):]
+            else:
+                filtering_puncs = re.finditer(r'[，。]', text_to_gen)
+                for p in filtering_puncs:
+                    pos = p.span()[0]
+                    cont = p.group()
+                    match cont:
+                        case '。':
+                            new_cont = '.'
+                        case _:
+                            new_cont = ','
+                    text_to_gen = text_to_gen[:pos] + new_cont + text_to_gen[(pos+1):]
+
 
             text_to_gen += '[lbreak]'
 
