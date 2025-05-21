@@ -1,1 +1,1 @@
-source ../t_act.sh; cd ../Speech-AI-Forge; python3.10 launch.py & source ../s_act.sh; cd ../so-vits-svc; python3.8 svc_serve.py & source ../m_act.sh; cd ../MAICA_MTTS; python3.12 mtts.py
+source ../g_act.sh; cd ../GPT-SoVITS; python api_v2.py & source ../m_act.sh; cd ../MAICA_MTTS; python mtts.py

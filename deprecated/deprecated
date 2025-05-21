@@ -1,0 +1,206 @@
+
+async def generate_voice(text, style, use_svc, debug=None):
+
+    CHATTTS_URL = load_env('CHATTTS_URL')
+    timestamp = f'{time.time():.21f}'
+
+    # Emotion dict
+    emotion_trans = {
+        "微笑": "chat",
+        "担心": "empathetic",
+        "笑": "cheerful",
+        "思考": "serious",
+        "开心": "cheerful",
+        "生气": "angry",
+        "脸红": "affectionate",
+        "凝视": "chat",
+        "沉重": "depressed",
+        "憧憬": "hopeful",
+        "惊喜": "excited",
+        "尴尬": "embarrassed",
+        "意味深长": "whispering",
+        "惊讶": "fearful",
+        "轻松": "calm",
+        "害羞": "affectionate",
+        "急切": "excited",
+        "得意": "envious",
+        "不满": "unfriendly",
+        "严肃": "serious",
+        "感动": "affectionate",
+        "激动": "excited",
+        "宠爱": "affectionate",
+        "眨眼": "cheerful",
+        "伤心": "sad",
+        "厌恶": "unfriendly",
+        "害怕": "terrified",
+        "可爱": "affectionate"
+    }
+
+    emotion_oral = {
+        "微笑": "3",
+        "担心": "2",
+        "笑": "3",
+        "思考": "1",
+        "开心": "4",
+        "生气": "4",
+        "脸红": "4",
+        "凝视": "2",
+        "沉重": "2",
+        "憧憬": "3",
+        "惊喜": "4",
+        "尴尬": "4",
+        "意味深长": "3",
+        "惊讶": "3",
+        "轻松": "4",
+        "害羞": "4",
+        "急切": "4",
+        "得意": "4",
+        "不满": "2",
+        "严肃": "1",
+        "感动": "3",
+        "激动": "4",
+        "宠爱": "3",
+        "眨眼": "3",
+        "伤心": "2",
+        "厌恶": "2",
+        "害怕": "1",
+        "可爱": "3"
+    }
+
+    emotion_laugh = {
+        "微笑": "0",
+        "担心": "0",
+        "笑": "1",
+        "思考": "0",
+        "开心": "1",
+        "生气": "0",
+        "脸红": "0",
+        "凝视": "0",
+        "沉重": "0",
+        "憧憬": "0",
+        "惊喜": "0",
+        "尴尬": "0",
+        "意味深长": "1",
+        "惊讶": "0",
+        "轻松": "1",
+        "害羞": "0",
+        "急切": "0",
+        "得意": "1",
+        "不满": "0",
+        "严肃": "0",
+        "感动": "0",
+        "激动": "0",
+        "宠爱": "0",
+        "眨眼": "1",
+        "伤心": "0",
+        "厌恶": "0",
+        "害怕": "0",
+        "可爱": "0"
+    }
+
+    emotion_break = {
+        "微笑": "5",
+        "担心": "6",
+        "笑": "4",
+        "思考": "6",
+        "开心": "5",
+        "生气": "3",
+        "脸红": "5",
+        "凝视": "6",
+        "沉重": "6",
+        "憧憬": "5",
+        "惊喜": "4",
+        "尴尬": "5",
+        "意味深长": "6",
+        "惊讶": "5",
+        "轻松": "5",
+        "害羞": "5",
+        "急切": "3",
+        "得意": "5",
+        "不满": "5",
+        "严肃": "5",
+        "感动": "5",
+        "激动": "4",
+        "宠爱": "5",
+        "眨眼": "5",
+        "伤心": "6",
+        "厌恶": "5",
+        "害怕": "4",
+        "可爱": "5"
+    }
+
+
+    # main infer params
+    # body = {
+    #     "input": text,
+    #     "voice": "严肃女领导",
+    #     "response_format": "wav",
+    #     "style": emotion_trans[style],
+    #     "batch_size": 4,
+    #     "top_k": 20,
+    #     "top_p": 0.6,
+    # }
+
+    body = {
+        "text": text,
+        "spk": "Bob" if use_svc else "嗲嗲的很酥麻",
+        "style": emotion_trans[style],
+        "temperature": 0.4 if use_svc else 0.55,
+        "top_k": 20,
+        "top_p": 0.7,
+        "format": "wav",
+        "prefix": f"[oral_{emotion_oral[style]}][laugh_{emotion_laugh[style]}][break_{emotion_break[style]}]",
+        "bs": 8,
+        "no_cache": True
+    }
+
+    if debug:
+        body.update(debug)
+
+    try:
+        async with httpx.AsyncClient(proxy=None, timeout=60) as aclient:
+            response = await aclient.get(CHATTTS_URL, params=body)
+            response.raise_for_status()
+
+        content = response.content
+        with open(f"{os.path.dirname(__file__)}/temp/{timestamp}.wav", "wb+") as res_f:
+            res_f.write(content)
+        # with zipfile.ZipFile(BytesIO(response.content), "r") as zip_ref:
+        #     # save files for each request in a different folder
+        #     dt = datetime.datetime.now()
+        #     tgt = f"{os.path.dirname(__file__)}/temp/{timestamp}/"
+        #     os.makedirs(tgt, 0o755)
+        #     zip_ref.extractall(tgt)
+
+    except requests.exceptions.RequestException as e:
+        print(f"Request error in TTS status: {e}")
+    
+    return timestamp
+
+
+async def change_voice(timestamp, use_svc, debug=None):
+
+    SOCSVC_URL = load_env('SOCSVC_URL')
+    SKIPSVC_URL = load_env('SKIPSVC_URL')
+    trg_file = open(f"{os.path.dirname(__file__)}/temp/{timestamp}.wav", "rb")
+    data = {}
+    files = {"sample": trg_file}
+    url = SOCSVC_URL if use_svc else SKIPSVC_URL
+    try:
+        async with httpx.AsyncClient(proxy=None, timeout=60) as aclient:
+            response = await aclient.post(url, data=data, files=files)
+            response.raise_for_status()
+        content = response.content
+        # with open(f"{os.path.dirname(__file__)}/result/{timestamp}.wav", "wb+") as res_f:
+        #     res_f.write(content)
+
+    except requests.exceptions.RequestException as e:
+        print(f"Request error in SVC status: {e}")
+
+    finally:
+        if not debug:
+            os.remove(f"{os.path.dirname(__file__)}/temp/{timestamp}.wav")
+        pass
+
+    return BytesIO(content)
+

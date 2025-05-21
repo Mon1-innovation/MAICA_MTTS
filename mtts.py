@@ -9,9 +9,7 @@ import functools
 import asyncio
 import datetime
 import os
-import zipfile
 from io import BytesIO
-import shutil
 import requests
 import httpx
 import json
@@ -24,6 +22,52 @@ import re
 
 from loadenv import load_env
 
+from pydub import AudioSegment
+import math
+
+async def process_audio_from_bytes(input_bytesio, volume_ratio=1.0):
+    """
+    从BytesIO处理音频并返回处理后的BytesIO对象
+    参数:
+        input_bytesio (BytesIO): 包含WAV音频的BytesIO对象
+        volume_ratio (float): 音量放大倍率
+    返回:
+        BytesIO: 包含转换后OGG音频的BytesIO对象（失败返回None）
+    """
+    try:
+        # 重置指针位置以便读取
+        input_bytesio.seek(0)
+        
+        # 从BytesIO读取WAV音频
+        audio = AudioSegment.from_file(
+            input_bytesio,
+            format="wav"
+        )
+        
+        # 计算增益并调整音量
+        gain_db = 20 * math.log10(volume_ratio)
+        louder_audio = audio + gain_db
+        
+        # 准备输出缓冲
+        output_buffer = BytesIO()
+        
+        # 导出到内存中的BytesIO
+        louder_audio.export(
+            output_buffer,
+            format="ogg",
+            codec="libvorbis",
+            parameters=["-strict", "-2"]
+        )
+        
+        # 重置指针位置以便后续读取
+        output_buffer.seek(0)
+        return output_buffer
+        
+    except Exception as e:
+        print(f"处理失败: {str(e)}")
+        return None
+
+
 async def wrap_run_in_exc(loop, func, *args, **kwargs):
     if not loop:
         loop = asyncio.get_running_loop()
@@ -35,228 +79,59 @@ async def wrap_run_in_exc(loop, func, *args, **kwargs):
 app = Quart(import_name=__name__)
 app = cors(app)
 
-
-async def generate_voice(text, style, use_svc, debug=None):
-
-    CHATTTS_URL = load_env('CHATTTS_URL')
-    timestamp = f'{time.time():.21f}'
-
-    # Emotion dict
-    emotion_trans = {
-        "微笑": "chat",
-        "担心": "empathetic",
-        "笑": "cheerful",
-        "思考": "serious",
-        "开心": "cheerful",
-        "生气": "angry",
-        "脸红": "affectionate",
-        "凝视": "chat",
-        "沉重": "depressed",
-        "憧憬": "hopeful",
-        "惊喜": "excited",
-        "尴尬": "embarrassed",
-        "意味深长": "whispering",
-        "惊讶": "fearful",
-        "轻松": "calm",
-        "害羞": "affectionate",
-        "急切": "excited",
-        "得意": "envious",
-        "不满": "unfriendly",
-        "严肃": "serious",
-        "感动": "affectionate",
-        "激动": "excited",
-        "宠爱": "affectionate",
-        "眨眼": "cheerful",
-        "伤心": "sad",
-        "厌恶": "unfriendly",
-        "害怕": "terrified",
-        "可爱": "affectionate"
-    }
-
-    emotion_oral = {
-        "微笑": "3",
-        "担心": "2",
-        "笑": "3",
-        "思考": "1",
-        "开心": "4",
-        "生气": "4",
-        "脸红": "4",
-        "凝视": "2",
-        "沉重": "2",
-        "憧憬": "3",
-        "惊喜": "4",
-        "尴尬": "4",
-        "意味深长": "3",
-        "惊讶": "3",
-        "轻松": "4",
-        "害羞": "4",
-        "急切": "4",
-        "得意": "4",
-        "不满": "2",
-        "严肃": "1",
-        "感动": "3",
-        "激动": "4",
-        "宠爱": "3",
-        "眨眼": "3",
-        "伤心": "2",
-        "厌恶": "2",
-        "害怕": "1",
-        "可爱": "3"
-    }
-
-    emotion_laugh = {
-        "微笑": "0",
-        "担心": "0",
-        "笑": "1",
-        "思考": "0",
-        "开心": "1",
-        "生气": "0",
-        "脸红": "0",
-        "凝视": "0",
-        "沉重": "0",
-        "憧憬": "0",
-        "惊喜": "0",
-        "尴尬": "0",
-        "意味深长": "1",
-        "惊讶": "0",
-        "轻松": "1",
-        "害羞": "0",
-        "急切": "0",
-        "得意": "1",
-        "不满": "0",
-        "严肃": "0",
-        "感动": "0",
-        "激动": "0",
-        "宠爱": "0",
-        "眨眼": "1",
-        "伤心": "0",
-        "厌恶": "0",
-        "害怕": "0",
-        "可爱": "0"
-    }
-
-    emotion_break = {
-        "微笑": "5",
-        "担心": "6",
-        "笑": "4",
-        "思考": "6",
-        "开心": "5",
-        "生气": "3",
-        "脸红": "5",
-        "凝视": "6",
-        "沉重": "6",
-        "憧憬": "5",
-        "惊喜": "4",
-        "尴尬": "5",
-        "意味深长": "6",
-        "惊讶": "5",
-        "轻松": "5",
-        "害羞": "5",
-        "急切": "3",
-        "得意": "5",
-        "不满": "5",
-        "严肃": "5",
-        "感动": "5",
-        "激动": "4",
-        "宠爱": "5",
-        "眨眼": "5",
-        "伤心": "6",
-        "厌恶": "5",
-        "害怕": "4",
-        "可爱": "5"
-    }
-
-
-    # main infer params
-    # body = {
-    #     "input": text,
-    #     "voice": "严肃女领导",
-    #     "response_format": "wav",
-    #     "style": emotion_trans[style],
-    #     "batch_size": 4,
-    #     "top_k": 20,
-    #     "top_p": 0.6,
-    # }
-
+async def mtts_v2(text, style, target_lang):
+    """
+    http://127.0.0.1:9880/tts?text=%E5%85%88%E5%B8%9D%E5%88%9B%E4%B8%9A%E6%9C%AA%E5%8D%8A%E8%80%8C%E4%B8%AD%E9%81%93%E5%B4%A9%E6%AE%82%EF%BC%8C%E4%BB%8A%E5%A4%A9%E4%B8%8B%E4%B8%89%E5%88%86%EF%BC%8C%E7%9B%8A%E5%B7%9E%E7%96%B2%E5%BC%8A%EF%BC%8C%E6%AD%A4%E8%AF%9A%E5%8D%B1%E6%80%A5%E5%AD%98%E4%BA%A1%E4%B9%8B%E7%A7%8B%E4%B9%9F%E3%80%82&text_lang=zh&ref_audio_path=ref/ref.wav&prompt_lang=en&prompt_text=Now,%20I%20actually%20do%20have%20the%20perspective%20of%20the%20other%20Monika,%20too.%20And%20you%20know,%20honestly,%20the%20side%20of%20me%20that%20let%20those%20insults%20get%20to%20me%20is%20kind%20of%20frustrated.&text_split_method=cut5&batch_size=1&media_type=wav&streaming_mode=true
+    """
+    SOVITS_URL = load_env("SOVITS_URL")
     body = {
-        "text": text,
-        "spk": "Bob" if use_svc else "嗲嗲的很酥麻",
-        "style": emotion_trans[style],
-        "temperature": 0.4 if use_svc else 0.55,
-        "top_k": 20,
-        "top_p": 0.7,
-        "format": "wav",
-        "prefix": f"[oral_{emotion_oral[style]}][laugh_{emotion_laugh[style]}][break_{emotion_break[style]}]",
-        "bs": 8,
-        "no_cache": True
+        "text": text,                  
+        "text_lang": target_lang,             
+        "ref_audio_path": "ref/ref.wav",        
+        "aux_ref_audio_paths": [],   
+        "prompt_text": "Now, I actually do have the perspective of the other Monika, too. And you know, honestly, the side of me that let those insults get to me is kind of frustrated.",           
+        "prompt_lang": "en",           
+        "top_k": 20,                  
+        "top_p": 0.7,                  
+        "temperature": 1,            
+        "text_split_method": "cut5", 
+        "batch_size": 1,             
+        "batch_threshold": 0.75,     
+        "split_bucket": True,        
+        "speed_factor": 1.0,          
+        "streaming_mode": False,     
+        "seed": 42,                  
+        "parallel_infer": True,      
+        "repetition_penalty": 1.35,  
+        "sample_steps": 8,          
+        "super_sampling": False,     
     }
-
-    if debug:
-        body.update(debug)
-
     try:
         async with httpx.AsyncClient(proxy=None, timeout=60) as aclient:
-            response = await aclient.get(CHATTTS_URL, params=body)
-            response.raise_for_status()
-
-        content = response.content
-        with open(f"{os.path.dirname(__file__)}/temp/{timestamp}.wav", "wb+") as res_f:
-            res_f.write(content)
-        # with zipfile.ZipFile(BytesIO(response.content), "r") as zip_ref:
-        #     # save files for each request in a different folder
-        #     dt = datetime.datetime.now()
-        #     tgt = f"{os.path.dirname(__file__)}/temp/{timestamp}/"
-        #     os.makedirs(tgt, 0o755)
-        #     zip_ref.extractall(tgt)
-
-    except requests.exceptions.RequestException as e:
-        print(f"Request error in TTS status: {e}")
-    
-    return timestamp
-
-
-async def change_voice(timestamp, use_svc, debug=None):
-
-    SOCSVC_URL = load_env('SOCSVC_URL')
-    SKIPSVC_URL = load_env('SKIPSVC_URL')
-    trg_file = open(f"{os.path.dirname(__file__)}/temp/{timestamp}.wav", "rb")
-    data = {}
-    files = {"sample": trg_file}
-    url = SOCSVC_URL if use_svc else SKIPSVC_URL
-    try:
-        async with httpx.AsyncClient(proxy=None, timeout=60) as aclient:
-            response = await aclient.post(url, data=data, files=files)
+            response = await aclient.get(SOVITS_URL, params=body)
             response.raise_for_status()
         content = response.content
-        # with open(f"{os.path.dirname(__file__)}/result/{timestamp}.wav", "wb+") as res_f:
-        #     res_f.write(content)
-
     except requests.exceptions.RequestException as e:
-        print(f"Request error in SVC status: {e}")
-
-    finally:
-        if not debug:
-            os.remove(f"{os.path.dirname(__file__)}/temp/{timestamp}.wav")
-        pass
-
+        print(f"Request error in SOVITS status: {e}")
     return BytesIO(content)
 
 
-async def make_mtts(text, style, use_svc=True, debug=None, use_cache=True):
+async def make_mtts(text, style, target_lang, use_cache=True):
     if use_cache:
-        chrs = await wrap_run_in_exc(None, hash_256, (str(int(use_svc)) + '|' + style + '|' + text).encode())
+        # chrs = await wrap_run_in_exc(None, hash_256, (style + '|' + text).encode())
+        chrs = await wrap_run_in_exc(None, hash_256, text.encode())
         try:
             with open(f'{os.path.dirname(__file__)}/result/{chrs}.ogg', 'rb') as f:
                 voice_bio = BytesIO(f.read())
             print('Cache hit')
         except:
-            timestamp = await generate_voice(text, style, use_svc, debug)
-            voice_bio = await change_voice(timestamp, use_svc, debug)
+            voice_bio = await mtts_v2(text, style, target_lang)
+            voice_bio = await process_audio_from_bytes(voice_bio, 2)
             with open(f'{os.path.dirname(__file__)}/result/{chrs}.ogg', 'wb+') as f:
                 f.write(voice_bio.getbuffer())
     else:
-        timestamp = await generate_voice(text, style, use_svc, debug)
-        voice_bio = await change_voice(timestamp, use_svc, debug)
+        voice_bio = await mtts_v2(text, style, target_lang)
+        voice_bio = await process_audio_from_bytes(voice_bio, 2)
     purge_unused_cache()
     return voice_bio
 
@@ -305,10 +180,6 @@ async def generation():
         except:
             style_to_att = '微笑'
         try:
-            enable_svc = bool(data['conversion'])
-        except:
-            enable_svc = True
-        try:
             target_lang = data['target_lang']
             if not target_lang:
                 raise Exception('use default')
@@ -333,60 +204,61 @@ async def generation():
             json_r = {"success": True}
         if json_r['success']:
             # main logic here
-
             # pre-filtering first
-            text_to_gen = re.sub(r'\[.。]{2,}', '.', text_to_gen)
-            text_to_gen = re.sub(r'\s+', ' ', text_to_gen)
-            pattern_numeric = re.compile(r'[0-9]')
-            pattern_content = re.compile(r'[一-龥A-Za-z]')
-            pattern_punc_equal_fbreak = re.compile(r"[~!?~！…？]+")
-            pattern_punc_equal_hbreak = re.compile(r"[:\"{}\/;'\\[\]·（）—{}《》：“”【】、；‘']+")
-            pattern_punc_equal_none = re.compile(r"[`@#$%^&*()_\-+=<>|@#￥%&*\-+=|]+")
-            text_to_gen = pattern_punc_equal_fbreak.sub('.', text_to_gen)
-            text_to_gen = pattern_punc_equal_hbreak.sub(',', text_to_gen)
-            text_to_gen = pattern_punc_equal_none.sub('', text_to_gen)
+            if False:
+                pattern_numeric = re.compile(r'[0-9]')
+                pattern_content = re.compile(r'[一-龥A-Za-z]')
+                pattern_punc_equal_fbreak = re.compile(r"[~!?~！…？]+")
+                pattern_punc_equal_hbreak = re.compile(r"[:\"{}\/;'\\[\]·（）—{}《》：“”【】、；‘']+")
+                pattern_punc_equal_none = re.compile(r"[`@#$%^&*()_\-+=<>|@#￥%&*\-+=|]+")
+
+                text_to_gen = re.sub(r'\[.。]{2,}', '.', text_to_gen)
+                text_to_gen = re.sub(r'\s+', ' ', text_to_gen)
+                text_to_gen = pattern_punc_equal_fbreak.sub('.', text_to_gen)
+                text_to_gen = pattern_punc_equal_hbreak.sub(',', text_to_gen)
+                text_to_gen = pattern_punc_equal_none.sub('', text_to_gen)
 
 
-            def is_decimal(five_related_cells):
-                nonlocal pattern_content, pattern_numeric
-                if five_related_cells[2] in ['.', ',']:
-                    nums = len(pattern_numeric.findall(five_related_cells)); cnts = len(pattern_content.findall(five_related_cells))
-                    if nums>=2 or cnts<=1:
-                        return True
-                return False
+                def is_decimal(five_related_cells):
+                    nonlocal pattern_content, pattern_numeric
+                    if five_related_cells[2] in ['.', ',']:
+                        nums = len(pattern_numeric.findall(five_related_cells)); cnts = len(pattern_content.findall(five_related_cells))
+                        if nums>=2 or cnts<=1:
+                            return True
+                    return False
 
-            if target_lang == 'zh':
-                filtering_puncs = re.finditer(r'[,.]', text_to_gen)
-                for p in filtering_puncs:
-                    pos = p.span()[0]
-                    cont = p.group()
-                    five_relcs = ('  '+text_to_gen+'  ')[(pos):(pos+5)]
-                    if is_decimal(five_relcs):
-                        pass
-                    else:
+                if target_lang == 'zh':
+                    filtering_puncs = re.finditer(r'[,.]', text_to_gen)
+                    for p in filtering_puncs:
+                        pos = p.span()[0]
+                        cont = p.group()
+                        five_relcs = ('  '+text_to_gen+'  ')[(pos):(pos+5)]
+                        if is_decimal(five_relcs):
+                            pass
+                        else:
+                            match cont:
+                                case '.':
+                                    new_cont = '。'
+                                case _:
+                                    new_cont = '，'
+                            text_to_gen = text_to_gen[:pos] + new_cont + text_to_gen[(pos+1):]
+                else:
+                    filtering_puncs = re.finditer(r'[，。]', text_to_gen)
+                    for p in filtering_puncs:
+                        pos = p.span()[0]
+                        cont = p.group()
                         match cont:
-                            case '.':
-                                new_cont = '。'
+                            case '。':
+                                new_cont = '.'
                             case _:
-                                new_cont = '，'
+                                new_cont = ','
                         text_to_gen = text_to_gen[:pos] + new_cont + text_to_gen[(pos+1):]
-            else:
-                filtering_puncs = re.finditer(r'[，。]', text_to_gen)
-                for p in filtering_puncs:
-                    pos = p.span()[0]
-                    cont = p.group()
-                    match cont:
-                        case '。':
-                            new_cont = '.'
-                        case _:
-                            new_cont = ','
-                    text_to_gen = text_to_gen[:pos] + new_cont + text_to_gen[(pos+1):]
 
 
-            text_to_gen += '[lbreak]'
+                text_to_gen += '[lbreak]'
 
             print(f'Generating speech--{style_to_att}: {text_to_gen}')
-            result = await make_mtts(text_to_gen, style_to_att, enable_svc, debug, cache_strats)
+            result = await make_mtts(text_to_gen, style_to_att, target_lang, cache_strats)
             return await send_file(result, as_attachment=True, mimetype="audio/ogg")
         else:
             raise Exception(json_r['exception'])
