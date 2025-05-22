@@ -1,74 +1,54 @@
 I'm sorry for not offering an English ver of this document but it's just too much work for me.
 If you want to read in English, use a translator.
 
-此文档是MAICA-MTTS后端的部署文档. 文档中一并提供tts与svc模型的部署方式.
+此文档是MAICA-MTTS后端的部署文档. 文档中一并提供tts模型的部署方式.
 由于开发变动频繁, MAICA-MTTS后端不提供release. 在示例中, 部署环境是windows powershell. 部分命令的linux版本在注释中.
 标有*的命令为示范命令, 不可直接执行. 你需要填入对应你设备环境的具体条目.
-项目使用的tts是ChatTTS, svc是so-vits-svc. 原理为先生成音频再校对音色, 经实证效果优于zeroshot.
+项目使用的tts是GPT-SoVITS V4.
 若要使用其它模型, 可以自行部署接口api并修改对接代码, 具体不再赘述.
 
-#完整的部署需要三套python环境: 3.8.x(svc), 3.10.x(tts), 3.12.x(主程序).
-#在这里我们令其别名分别为python3.8, python3.10, python3.12.
-    #对于windows系统, 你需要首先下载并解压这三个版本的python, 并为其创建软链接:
-        *mklink C:\py38\installation\path\python.exe C:\py38\installation\path\python3.8.exe
-        *mklink C:\py310\installation\path\python.exe C:\py38\installation\path\python3.10.exe
-        *mklink C:\py312\installation\path\python.exe C:\py38\installation\path\python3.12.exe
-    #其中, C:\py38\installation\path\, C:\py310\installation\path\, C:\py312\installation\path\ 均应在你的$env:PATH中.
+#完整的部署需要两套python环境: 3.9.x(tts), 3.12.x(主程序).
+#在这里我们令其别名分别为python3.9, python3.12.
+    #对于windows系统, 你需要首先下载并解压这两个版本的python, 并为其创建软链接:
+        *mklink C:\py39\installation\path\python.exe C:\py39\installation\path\python3.9.exe
+        *mklink C:\py312\installation\path\python.exe C:\py312\installation\path\python3.12.exe
+    #其中, C:\py39\installation\path\, C:\py312\installation\path\ 均应在你的$env:PATH中.
     #对于linux系统, 用PPA直接安装比较简单:
         sudo add-apt-repository ppa:deadsnakes/ppa
         sudo apt update
-        sudo apt install python3.8 python3.10 python3.12
+        sudo apt install python3.9 python3.12
     #你也可以选择为其分别创建虚拟环境, 具体不再赘述.
-#如果一切就绪, 在任意目录下运行python3.8 -V 应当回显python3.8.x的版本号, 剩余同理.
+#如果一切就绪, 在任意目录下运行python3.9 -V 应当回显python3.9.x的版本号, 剩余同理.
 
-#接下来, 你需要创建目录容纳tts, svc与MAICA-MTTS后端三个项目:
+#接下来, 你需要创建目录容纳tts与MAICA-MTTS后端两个项目:
     # ~/
     mkdir ./mtts
     cd mtts
 #请确保你已经安装git, 并能够连接到github, 具体不再赘述.
     # ~/mtts/
-    git clone https://github.com/2noise/ChatTTS.git
-    git clone https://github.com/svc-develop-team/so-vits-svc.git
+    git clone https://github.com/RVC-Boss/GPT-SoVITS.git
     git clone https://github.com/Mon1-innovation/MAICA_MTTS.git
-#为稳定起见, 固定tts与svc项目到已知版本:
+#为稳定起见, 固定tts项目到已知版本:
     # ~/mtts/
-    cd ChatTTS
-    git checkout tags/v0.2.3
-    cd ../so-vits-svc
-    git checkout 4.1-Stable
+    cd GPT-SoVITS
+    git checkout tags/20250422v4
     cd ..
 
 #接下来, 按照tts项目需求安装依赖:
     # ~/mtts/
-    cd ChatTTS
-    python3.10 -m pip install -r requirements.txt
-    python3.10 -m pip install -e .
-#你可以选择安装flash-attention提高推理效率, 但编译安装耗时可能长达十几个小时:
-    python3.10 -m pip install flash-attn --no-build-isolation
-#接下来, 按照svc项目需求安装依赖:
-    cd ../so-vits-svc
-    python3.8 -m pip install -r requirements.txt
-#接下来, 为MAICA-MTTS安装依赖:
-    cd ../MAICA_MTTS
-    python3.12 -m pip install -r requirements.txt
-    cd ..
+    cd GPT-SoVITS
+    python3.9 -m pip install -r requirements.txt
 
 #接下来, 将MAICA-MTTS服务端文件注入以上项目:
     # ~/mtts/
-    wget "https://huggingface.co/edgeinfinity/MTTSv0-VoiceClone/resolve/main/G_20000.pth?download=true" -OutFile "./MAICA_MTTS/injection/logs/44k/G_20000.pth"
+    wget "https://huggingface.co/edgeinfinity/MTTSv1-VoiceClone/resolve/main/xxx-e15.ckpt?download=true" -OutFile "./MAICA_MTTS/injection/mtts/GPT-SoVITS/SoVITS_weights_v4/xxx-e15.ckpt"
     #若为linux环境, 使用以下命令:
-        wget https://huggingface.co/edgeinfinity/MTTSv0-VoiceClone/resolve/main/G_20000.pth?download=true -O ./MAICA_MTTS/injection/logs/44k/G_20000.pth
+        wget https://huggingface.co/edgeinfinity/MTTSv1-VoiceClone/resolve/main/xxx-e15.ckpt?download=true -O ./MAICA_MTTS/injection/mtts/GPT-SoVITS/SoVITS_weights_v4/xxx-e15.ckpt
     #其余不再赘述.
-    wget "https://huggingface.co/edgeinfinity/MTTSv0-VoiceClone/resolve/main/feature_and_index.pkl?download=true" -OutFile "./MAICA_MTTS/injection/logs/44k/feature_and_index.pkl"
-    cp -Path "./MAICA_MTTS/injection/logs/*" -Destination "./so-vits-svc/logs" -Recurse
+    wget "https://huggingface.co/edgeinfinity/MTTSv1-VoiceClone/resolve/main/xxx_e10_s1640_l32.pth?download=true" -OutFile "./MAICA_MTTS/injection/mtts/GPT-SoVITS/GPT_weights_v4/xxx-e15.ckpt"
+    cp -Path "./MAICA_MTTS/injection/mtts/*" -Destination "./" -Recurse
     #若为linux环境, 使用以下命令:
-        cp -rf ./MAICA_MTTS/injection/logs/* ./so-vits-svc/logs
-    #其余不再赘述.
-    cp -Path "./MAICA_MTTS/injection/vencoder/*" -Destination "./so-vits-svc/vencoder"
-    cp -Path "./MAICA_MTTS/injection/svc_serve.py" -Destination "./so-vits-svc"
-    cp -Path "./MAICA_MTTS/injection/tts_serve.py" -Destination "./ChatTTS/examples/api"
-    #以下是一些虚拟环境占位符, 没有内容是正常的. 如果你使用了venv可以自行填补.
-    cp -Path "./MAICA_MTTS/injection/mtts/*" -Destination "./"
+        cp -rf ./MAICA_MTTS/injection/mtts/* ./
 
 #创建设置文件:
     # ~/mtts/
@@ -82,13 +62,12 @@ LOGIN_VERIFICATION = "enabled"
     #如果你的实例可以从公开网络访问或需要与不信任的人共用, 一定不要关闭此校验.
 VFC_URL = "https://maicadev.monika.love/api/legality"
     #MAICA-MTTS校验用户合法性接口, 来自MAICA部署.
-CHATTTS_URL = "http://127.0.0.1:8000/generate_voice"
-    #tts接口内部地址, 可保持默认.
-SOCSVC_URL = "http://127.0.0.1:6842/change_voice"
-    #svc接口内部地址, 可保持默认.
+SOVITS_URL = "http://127.0.0.1:9880/tts"
+    #tts项目的默认api地址.
 KEEP_POLICY = "168"
     #生成缓存的寿命*小时, 超时未被读取过的缓存会被清除. 设为0不保留多余缓存, 设为-1不清理缓存.
 
 #接下来, 你可以启动MAICA-MTTS后端了:
     # ~/mtts/MAICA_MTTS/
-    bash start_linux.sh
+    cd ..
+    python3.9 GPT-SoVITS/api_v2.py && python3.12 MAICA_MTTS/mtts.py
