@@ -1,6 +1,3 @@
-if __name__ == '__main__':
-    from gevent import monkey
-    monkey.patch_all()
 from quart import Quart, request, send_file
 from quart_cors import cors
 from hypercorn.config import Config
@@ -19,11 +16,42 @@ import traceback
 import hashlib
 import schedule
 import re
-
-from loadenv import load_env
-
 from pydub import AudioSegment
 import math
+
+from maica.maica_utils import *
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 async def process_audio_from_bytes(input_bytesio, volume_ratio=1.0):
     """

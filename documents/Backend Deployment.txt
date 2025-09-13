@@ -71,3 +71,4 @@ KEEP_POLICY = "168"
     # ~/mtts/MAICA_MTTS/
     cd ..
     python3.9 GPT-SoVITS/api_v2.py && python3.12 MAICA_MTTS/mtts.py
+    # source g_act.sh; python3.9 GPT-SoVITS/api_v2.py && source m_act.sh; python3.12 MAICA_MTTS/mtts.py
