@@ -1,0 +1,1 @@
+from .mtts_starter import check_params as init

@@ -1,5 +1,4 @@
 from quart import Quart, request, send_file
-from quart_cors import cors
 from hypercorn.config import Config
 from hypercorn.asyncio import serve
 import functools
@@ -105,7 +104,6 @@ async def wrap_run_in_exc(loop, func, *args, **kwargs):
 
 
 app = Quart(import_name=__name__)
-app = cors(app)
 
 async def mtts_v2(text, style, target_lang):
     """
