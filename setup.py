@@ -13,7 +13,7 @@ sys.argv = [sys.argv[0]] + remaining_args
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
-with open("mtts/env_example", "r", encoding="utf-8") as env:
+with open("mtts/mtts_env_basis", "r", encoding="utf-8") as env:
     curr_version_line = re.compile(r'^MTTS_CURR_VERSION\s*=\s*\'(.*)\'')
     for line in env:
         line = line.strip()
@@ -57,12 +57,8 @@ setuptools.setup(
     ],
     python_requires='>=3.12',    #对python的最低版本要求
     install_requires=parse_requirements(),
-    entry_points={
-        'console_scripts': [
-            'mtts = mtts.mtts_starter:full_start',
-        ],
-    },
+    entry_points={},
     package_data={
-        'mtts': ['env_example'],
+        'mtts': ['mtts_env_basis'],
     },
 )

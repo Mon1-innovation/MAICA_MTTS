@@ -18,28 +18,28 @@ from maica.maica_utils import *
 from maica.mtools import NvWatcher
 
 def pkg_init_mtts_http():
-    global TTS_ADDR, FULL_RESTFUL, known_servers
+    global TTS_ADDR, FULL_RESTFUL
     TTS_ADDR = load_env('MTTS_TTS_ADDR')
-    FULL_RESTFUL = load_env('MTTS_FULL_RESTFUL')
+    FULL_RESTFUL = load_env('MAICA_FULL_RESTFUL')
     if FULL_RESTFUL == '1':
-        ...
+        app.add_url_rule("/legality", methods=['GET'], view_func=ShortConnHandler.as_view("check_legality"))
+        app.add_url_rule("/servers", methods=['GET'], view_func=ShortConnHandler.as_view("get_servers", val=False))
+        app.add_url_rule("/accessibility", methods=['GET'], view_func=ShortConnHandler.as_view("get_accessibility", val=False))
+        app.add_url_rule("/version", methods=['GET'], view_func=ShortConnHandler.as_view("get_version", val=False))
+        app.add_url_rule("/workload", methods=['GET'], view_func=ShortConnHandler.as_view("get_workload", val=False))
     else:
-        ...
+        app.add_url_rule("/legality", methods=['GET'], view_func=ShortConnHandler.as_view("check_legality"))
+        app.add_url_rule("/servers", methods=['GET'], view_func=ShortConnHandler.as_view("get_servers", val=False))
+        app.add_url_rule("/accessibility", methods=['GET'], view_func=ShortConnHandler.as_view("get_accessibility", val=False))
+        app.add_url_rule("/version", methods=['GET'], view_func=ShortConnHandler.as_view("get_version", val=False))
+        app.add_url_rule("/workload", methods=['GET'], view_func=ShortConnHandler.as_view("get_workload", val=False))
     app.add_url_rule("/<path>", methods=['GET', 'POST', 'PUT', 'DELETE', 'PATCH'], view_func=ShortConnHandler.as_view("any_unknown", val=False))
-
-    try:
-        known_servers = json.loads(load_env('MTTS_SERVERS_LIST'))
-    except Exception as e:
-        sync_messenger(info=f'Loading servers list failed: {str(e)}', type=MsgType.ERROR)
-        known_servers = False
 
 app = Quart(import_name=__name__)
 app.config['JSON_AS_ASCII'] = False
 
-# quart_logger = logging.getLogger('hypercorn.error')
-# quart_logger.disabled = True
-
-workload_cache = {}
+quart_logger = logging.getLogger('hypercorn.error')
+quart_logger.disabled = True
 
 class ShortConnHandler(View):
     """Flask initiates it on every request."""
@@ -51,10 +51,11 @@ class ShortConnHandler(View):
     mtts_watcher: NvWatcher = None
 
     def __init__(self, val=True):
-        if val:
-            self.val = True
-        else:
-            self.val = False
+        self.val = val
+
+    def msg_http(self, *args, **kwargs):
+        if self.val:
+            sync_messenger(*args, **kwargs)
 
     async def dispatch_request(self, **kwargs):
         try:
@@ -66,16 +67,18 @@ class ShortConnHandler(View):
                 self.settings = None
             endpoint = request.endpoint
             function_routed = getattr(self, endpoint)
-            if function_routed:
-                await messenger(info=f'Recieved request on API endpoint {endpoint}', type=MsgType.RECV)
-                result = await function_routed()
 
-                if isinstance(result, Response):
-                    result_json = await result.get_json()
-                    d = {"success": result_json.get('success'), "exception": result_json.get('exception'), "content": ellipsis_str(result_json.get('content'))}
-                    await messenger(info=f'Return value: {str(d)}', type=MsgType.SYS)
+            self.msg_http(info=f'Recieved request on API endpoint {endpoint}', type=MsgType.RECV)
+            result = await function_routed()
 
-                return result
+            if isinstance(result, Response):
+                result_json = await result.get_json()
+                d = {"success": result_json.get('success'), "exception": result_json.get('exception')}
+                if "content" in result_json:
+                    d["content"] = ellipsis_str(result_json.get('content'))
+                self.msg_http(info=f'Return value: {str(d)}', type=MsgType.SYS)
+
+            return result
 
         except CommonMaicaException as ce:
             if ce.is_critical:
@@ -87,7 +90,8 @@ class ShortConnHandler(View):
             await messenger(info=f'Handler hit an exception: {str(e)}', type=MsgType.WARN)
             return jsonify({"success": False, "exception": str(e)})
 
-    async def _validate_http(self, raw_data: Union[str, dict], must: list=[]) -> dict:
+    async def _validate_http(self, raw_data: Union[str, dict], must: Optional[list]=None) -> dict:
+        must = must if must else []
         data_json = await validate_input(raw_data, 100000, None, must=must)
         if self.val and 'access_token' in must:
             access_token = data_json.get('access_token')
@@ -105,10 +109,11 @@ class ShortConnHandler(View):
     
     get_servers = maica_http.ShortConnHandler.get_servers
     
-    async def get_accessibility(self):
-        """GET, val=False"""
-        accessibility = load_env('MTTS_DEV_STATUS')
-        return jsonify({"success": True, "exception": None, "content": accessibility})
+    get_accessibility = maica_http.ShortConnHandler.get_accessibility
+
+    async def generate_tts(self):
+        """GET"""
+        ...
     
     async def get_version(self):
         """GET, val=False"""
@@ -141,7 +146,7 @@ async def prepare_thread(**kwargs):
     mtts_task = asyncio.create_task(ShortConnHandler.mtts_watcher.wrapped_main_watcher())
 
     config = Config()
-    config.bind = ['0.0.0.0:6000']
+    config.bind = ['0.0.0.0:7000']
 
     main_task = asyncio.create_task(serve(app, config))
     task_list = [main_task, mtts_task]

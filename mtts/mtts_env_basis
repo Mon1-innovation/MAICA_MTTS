@@ -1,0 +1,28 @@
+# cp ./env_basis ./.env
+# vim .env
+# Do not mv, rm or edit examples! They're required as default templates.
+
+# All envs of MAICA are under namespace MAICA_. Please don't violate.
+
+
+# MTTS specified settings
+
+# Current backend version
+MTTS_CURR_VERSION = '1.0.000'
+# Oldest capable backend version
+MTTS_VERSION_CONTROL = '1.0.000'
+# MTTS model endpoint
+MTTS_TTS_ADDR = ''# http://172.17.0.1:80/tts
+
+# These fields of MAICA are used even for deploying MTTS only:
+# MAICA_IS_REAL_ENV (fill manually)
+# MAICA_DB_ADDR (fill manually)
+# MAICA_DB_USER (fill manually)
+# MAICA_DB_PASSWORD (fill manually)
+# MAICA_AUTH_DB (fill manually)
+# MAICA_DATA_DB (fill manually)
+# MAICA_F2B_COUNT
+# MAICA_F2B_TIME
+# MAICA_FULL_RESTFUL
+# MAICA_PRINT_VERBOSE
+# MAICA_NO_SEND_ERROR
