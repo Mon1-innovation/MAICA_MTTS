@@ -1,4 +1,4 @@
-from quart import Quart, request, jsonify, Response
+from quart import Quart, request, jsonify, send_file, Response
 from quart.views import View
 import os
 import asyncio
@@ -13,21 +13,21 @@ from hypercorn.asyncio import serve
 from typing import *
 
 from maica import maica_http
-from maica.maica_ws import NoWsCoroutine, _onliners
+from maica.maica_ws import NoWsCoroutine
 from maica.maica_utils import *
 from maica.mtools import NvWatcher
+from mtts.audio.tts_api import TTSRequest
 
 def pkg_init_mtts_http():
-    global TTS_ADDR, FULL_RESTFUL
-    TTS_ADDR = load_env('MTTS_TTS_ADDR')
-    FULL_RESTFUL = load_env('MAICA_FULL_RESTFUL')
-    if FULL_RESTFUL == '1':
+    if G.A.FULL_RESTFUL == '1':
+        app.add_url_rule("/generate", methods=['GET'], view_func=ShortConnHandler.as_view("generate_tts"))
         app.add_url_rule("/legality", methods=['GET'], view_func=ShortConnHandler.as_view("check_legality"))
         app.add_url_rule("/servers", methods=['GET'], view_func=ShortConnHandler.as_view("get_servers", val=False))
         app.add_url_rule("/accessibility", methods=['GET'], view_func=ShortConnHandler.as_view("get_accessibility", val=False))
         app.add_url_rule("/version", methods=['GET'], view_func=ShortConnHandler.as_view("get_version", val=False))
         app.add_url_rule("/workload", methods=['GET'], view_func=ShortConnHandler.as_view("get_workload", val=False))
     else:
+        app.add_url_rule("/generate", methods=['GET'], view_func=ShortConnHandler.as_view("generate_tts"))
         app.add_url_rule("/legality", methods=['GET'], view_func=ShortConnHandler.as_view("check_legality"))
         app.add_url_rule("/servers", methods=['GET'], view_func=ShortConnHandler.as_view("get_servers", val=False))
         app.add_url_rule("/accessibility", methods=['GET'], view_func=ShortConnHandler.as_view("get_accessibility", val=False))
@@ -44,26 +44,45 @@ quart_logger.disabled = True
 class ShortConnHandler(maica_http.ShortConnHandler):
     """Flask initiates it on every request."""
 
-    auth_pool: DbPoolCoroutine = None
+    auth_pool: DbPoolManager = None
     """Don't forget to implement at first!"""
-    maica_pool: DbPoolCoroutine = None
+    maica_pool: DbPoolManager = None
     """Don't forget to implement at first!"""
     mtts_watcher: NvWatcher = None
 
     async def generate_tts(self):
         """GET"""
-        ...
-    
+        json_data = request.args.to_dict(flat=True)
+        valid_data = await self.validate_http(json_data, must=['access_token', 'content'])
+        content = json.loads(valid_data.get('content'))
+
+        # content:
+        # text: 你好啊
+        # emotion: 微笑
+        # target_lang: zh
+
+        tts_request = await TTSRequest.async_create(**content)
+
+        return_bio = await tts_request.get_tts()
+        file_name = tts_request.file_name
+
+        return await send_file(
+            return_bio,
+            as_attachment=True,
+            attachment_filename=file_name
+        )
+
     async def get_version(self):
         """GET, val=False"""
-        curr_version, legc_version = load_env('MTTS_CURR_VERSION'), load_env('MTTS_VERSION_CONTROL')
-        return jsonify({"success": True, "exception": None, "content": {"curr_version": curr_version, "legc_version": legc_version}})
+        curr_version, legc_version = G.T.CURR_VERSION, G.T.LEGC_VERSION
+        synbrace_capv = G.T.SYNBRACE_CAPV
+        return self.jfy_res({"curr_version": curr_version, "legc_version": legc_version, "fe_synbrace_version": synbrace_capv})
 
     async def get_workload(self):
         """GET, val=False"""
         content = self.mtts_watcher.get_statics_inside()
 
-        return jsonify({"success": True, "exception": None, "content": content})
+        return self.jfy_res(content)
 
 async def prepare_thread(**kwargs):
     auth_created = False; maica_created = False

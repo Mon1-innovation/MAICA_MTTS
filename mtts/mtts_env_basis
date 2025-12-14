@@ -1,3 +1,10 @@
+# It's suggested to exclude these lines (the top block) in your env configuration
+# Current backend version
+MTTS_CURR_VERSION = '1.0.001'
+# Oldest capable backend version
+MTTS_LEGC_VERSION = '1.0.001'
+# Frontend version announcement(s)
+MTTS_SYNBRACE_CAPV = '0.0.1'
 # cp ./env_basis ./.env
 # vim .env
 # Do not mv, rm or edit examples! They're required as default templates.
@@ -7,15 +14,21 @@
 
 # MTTS specified settings
 
-# Current backend version
-MTTS_CURR_VERSION = '1.0.000'
-# Oldest capable backend version
-MTTS_VERSION_CONTROL = '1.0.000'
+
 # MTTS model endpoint
 MTTS_TTS_ADDR = ''# http://172.17.0.1:80/tts
+# Rotate MTTS cache every [] hours or not
+MTTS_ROTATE_TTSCACHE = '168'
+# Name of MTTS deployment device
+# MTTS_TTS_NODE = ''
+# Username to access nvidia-smi through SSH
+# MTTS_TTS_USER = ''
+# Password for SSH login
+# MTTS_TTS_PWD = ''
 
 # These fields of MAICA are used even for deploying MTTS only:
 # MAICA_IS_REAL_ENV (fill manually)
+# MAICA_OPENAI_TIMEOUT
 # MAICA_DB_ADDR (fill manually)
 # MAICA_DB_USER (fill manually)
 # MAICA_DB_PASSWORD (fill manually)
@@ -24,5 +37,4 @@ MTTS_TTS_ADDR = ''# http://172.17.0.1:80/tts
 # MAICA_F2B_COUNT
 # MAICA_F2B_TIME
 # MAICA_FULL_RESTFUL
-# MAICA_PRINT_VERBOSE
 # MAICA_NO_SEND_ERROR
