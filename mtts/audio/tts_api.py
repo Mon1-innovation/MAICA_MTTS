@@ -96,14 +96,19 @@ class TTSRequest(AsyncCreator):
     
     async def get_tts(self):
         """Manages TTS cache. Requires generation if none found."""
+        sync_messenger(info=f"TTS handling content: {self.target_lang}, {self.ref}, {self.text}", type=MsgType.PRIM_RECV)
         if os.path.isfile(self._real_path):
             with open(self._real_path, 'rb') as cache_file:
                 tts_bio = BytesIO(cache_file.read())
+            sync_messenger(info="TTS cache hit", type=MsgType.DEBUG)
         else:
             tts_bio = await self._create_tts()
             if self.persistence:
                 with open(self._real_path, 'wb') as cache_file:
                     cache_file.write(tts_bio.getbuffer())
+                sync_messenger(info="TTS generated and cached", type=MsgType.DEBUG)
+            else:
+                sync_messenger(info="TTS generated temporarily", type=MsgType.DEBUG)
 
         tts_bio.seek(0)
 
