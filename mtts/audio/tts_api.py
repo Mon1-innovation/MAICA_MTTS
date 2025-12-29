@@ -44,8 +44,10 @@ class TTSRequest(AsyncCreator):
     def emotion_to_ref(emotion: str):
         """Simple..."""
         match emotion.strip('[').strip(']').lower():
-            case '开心' | 'happy' | '笑' | 'grin' | 'grinning':
-                ref = 'happy'
+            # We yet not have a better ref audio
+            
+            # case '开心' | 'happy' | '笑' | 'grin' | 'grinning':
+            #     ref = 'happy'
             case _:
                 ref = 'standard'
         return ref
