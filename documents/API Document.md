@@ -55,6 +55,12 @@ MAICA-MTTS的通信只包含短连接, 因为流式传输意义不大, 处理也
 
 见MAICA文档.
 
+### 在线加密令牌:
+
+> 端点: GET `/register`
+
+见MAICA文档.
+
 ### 获取服务器声明表:
 
 > 端点: GET `/servers`
