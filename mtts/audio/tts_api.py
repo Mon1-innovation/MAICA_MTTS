@@ -45,7 +45,7 @@ class TTSRequest(AsyncCreator):
         """Simple..."""
         match emotion.strip('[').strip(']').lower():
             # We yet not have a better ref audio
-            
+
             # case '开心' | 'happy' | '笑' | 'grin' | 'grinning':
             #     ref = 'happy'
             case _:
@@ -66,8 +66,8 @@ class TTSRequest(AsyncCreator):
             "text_lang": self.target_lang,              # str.(required) language of the text to be synthesized
             "ref_audio_path": f"mtts/{self.ref}.wav",         # str.(required) reference audio path
             # "aux_ref_audio_paths": [],    # list.(optional) auxiliary reference audio paths for multi-speaker tone fusion
-            "prompt_text": "Now, I actually do have the perspective of the other Monika, too. And you know, honestly, the side of me that let those insults get to me is kind of frustrated. ",            # str.(optional) prompt text for the reference audio
-            "prompt_lang": "en",            # str.(required) language of the prompt text for the reference audio
+            "prompt_text": G.T.REF_TEXT,            # str.(optional) prompt text for the reference audio
+            "prompt_lang": G.T.REF_LANG,            # str.(required) language of the prompt text for the reference audio
             # "top_k": 5,                   # int. top k sampling
             # "top_p": 1,                   # float. top p sampling
             # "temperature": 1,             # float. temperature for sampling
