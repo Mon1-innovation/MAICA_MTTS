@@ -68,10 +68,10 @@ class TTSRequest(AsyncCreator):
             # "aux_ref_audio_paths": [],    # list.(optional) auxiliary reference audio paths for multi-speaker tone fusion
             "prompt_text": G.T.REF_TEXT,            # str.(optional) prompt text for the reference audio
             "prompt_lang": G.T.REF_LANG,            # str.(required) language of the prompt text for the reference audio
-            # "top_k": 5,                   # int. top k sampling
-            # "top_p": 1,                   # float. top p sampling
-            # "temperature": 1,             # float. temperature for sampling
-            # "text_split_method": "cut5",  # str. text split method, see text_segmentation_method.py for details.
+            "top_k": 15,                   # int. top k sampling
+            "top_p": 1,                   # float. top p sampling
+            "temperature": 1,             # float. temperature for sampling
+            "text_split_method": "cut1",  # str. text split method, see text_segmentation_method.py for details.
             # "batch_size": 1,              # int. batch size for inference
             # "batch_threshold": 0.75,      # float. threshold for batch splitting.
             # "split_bucket": True,         # bool. whether to split the batch into multiple buckets.
