@@ -6,6 +6,7 @@ import httpx
 import base64
 import os
 import pydub
+import json
 
 from io import BytesIO
 from hashlib import md5
@@ -21,13 +22,20 @@ class TTSRequest(AsyncCreator):
     def file_name(self):
         return os.path.basename(self._real_path)
 
-    def __init__(self, text, emotion='微笑', target_lang: Literal['zh', 'en']='zh', persistence=True, lossless=False):
+    def __init__(self, text, emotion='微笑', target_lang: Literal['zh', 'en']='zh', persistence=True, lossless=False, **kwargs):
         self.url = G.T.TTS_ADDR
         self.text = self.proceed_tts_text(text)
         self.ref = self.emotion_to_ref(emotion)
         self.target_lang = target_lang
         self.persistence = persistence
         self.lossless = lossless
+
+        self.advanced = kwargs
+        if self.advanced:
+            self.persistence = False
+
+            # Sanitize
+            self.advanced.pop('ref_audio_path', None)
         
     async def _ainit(self):
         self.identity = await self.calculate_tts_identity()
@@ -71,13 +79,13 @@ class TTSRequest(AsyncCreator):
             "top_k": 15,                   # int. top k sampling
             "top_p": 1,                   # float. top p sampling
             "temperature": 1,             # float. temperature for sampling
-            "text_split_method": "cut1",  # str. text split method, see text_segmentation_method.py for details.
+            "text_split_method": "cut2",  # str. text split method, see text_segmentation_method.py for details.
             # "batch_size": 1,              # int. batch size for inference
             # "batch_threshold": 0.75,      # float. threshold for batch splitting.
             # "split_bucket": True,         # bool. whether to split the batch into multiple buckets.
-            # "speed_factor":1.0,           # float. control the speed of the synthesized audio.
+            "speed_factor":0.95,           # float. control the speed of the synthesized audio.
             # "fragment_interval":0.3,      # float. to control the interval of the audio fragment.
-            # "seed": -1,                   # int. random seed for reproducibility.
+            "seed": 42,                   # int. random seed for reproducibility.
             # "parallel_infer": True,       # bool. whether to use parallel inference.
             # "repetition_penalty": 1.35,   # float. repetition penalty for T2S model.
             # "sample_steps": 32,           # int. number of sampling steps for VITS model V3.
@@ -86,6 +94,11 @@ class TTSRequest(AsyncCreator):
             # "overlap_length": 2,          # int. overlap length of semantic tokens for streaming mode.
             # "min_chunk_length": 16,       # int. The minimum chunk length of semantic tokens for streaming mode. (affects audio chunk size)
         }
+
+        if self.advanced:
+            sync_messenger(info=f"\nAdvanced params detected:\n{json.dumps(self.advanced, ensure_ascii=False, indent=4)}", type=MsgType.RECV)
+            carriage.update(self.advanced)
+
         async with httpx.AsyncClient(timeout=int(G.A.OPENAI_TIMEOUT) if G.A.OPENAI_TIMEOUT != '0' else None) as client:
             response = await client.post(self.url, json=carriage)
 
