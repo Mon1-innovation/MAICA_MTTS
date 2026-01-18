@@ -83,7 +83,7 @@ class TTSRequest(AsyncCreator):
             # "batch_size": 1,              # int. batch size for inference
             # "batch_threshold": 0.75,      # float. threshold for batch splitting.
             # "split_bucket": True,         # bool. whether to split the batch into multiple buckets.
-            "speed_factor":0.95,           # float. control the speed of the synthesized audio.
+            "speed_factor": 0.98,           # float. control the speed of the synthesized audio.
             # "fragment_interval":0.3,      # float. to control the interval of the audio fragment.
             "seed": 42,                   # int. random seed for reproducibility.
             # "parallel_infer": True,       # bool. whether to use parallel inference.

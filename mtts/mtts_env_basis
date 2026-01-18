@@ -1,6 +1,6 @@
 # It's suggested to exclude these lines (the top block) in your env configuration
 # Current backend version
-MTTS_CURR_VERSION = '1.0.003'
+MTTS_CURR_VERSION = '1.0.003.post1'
 # Oldest capable backend version
 MTTS_LEGC_VERSION = '1.0.003'
 # Frontend version announcement(s)
