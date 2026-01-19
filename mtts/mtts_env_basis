@@ -4,7 +4,7 @@ MTTS_CURR_VERSION = '1.0.003.post1'
 # Oldest capable backend version
 MTTS_LEGC_VERSION = '1.0.003'
 # Frontend version announcement(s)
-MTTS_SYNBRACE_CAPV = '0.1.9'
+MTTS_SYNBRACE_CAPV = '0.2.1'
 # cp ./env_basis ./.env
 # vim .env
 # Do not mv, rm or edit examples! They're required as default templates.
