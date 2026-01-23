@@ -27,6 +27,7 @@ def pkg_init_mtts_http():
         app.add_url_rule("/accessibility", methods=['GET'], view_func=ShortConnHandler.as_view("get_accessibility", val=False))
         app.add_url_rule("/version", methods=['GET'], view_func=ShortConnHandler.as_view("get_version", val=False))
         app.add_url_rule("/workload", methods=['GET'], view_func=ShortConnHandler.as_view("get_workload", val=False))
+        app.add_url_rule("/defaults", methods=['GET'], view_func=ShortConnHandler.as_view("get_defaults", val=False))
     else:
         app.add_url_rule("/generate", methods=['GET'], view_func=ShortConnHandler.as_view("generate_tts"))
         app.add_url_rule("/register", methods=['GET'], view_func=ShortConnHandler.as_view("download_token", val=False))
@@ -35,6 +36,7 @@ def pkg_init_mtts_http():
         app.add_url_rule("/accessibility", methods=['GET'], view_func=ShortConnHandler.as_view("get_accessibility", val=False))
         app.add_url_rule("/version", methods=['GET'], view_func=ShortConnHandler.as_view("get_version", val=False))
         app.add_url_rule("/workload", methods=['GET'], view_func=ShortConnHandler.as_view("get_workload", val=False))
+        app.add_url_rule("/defaults", methods=['GET'], view_func=ShortConnHandler.as_view("get_defaults", val=False))
     app.add_url_rule("/<path>", methods=['GET', 'POST', 'PUT', 'DELETE', 'PATCH'], view_func=ShortConnHandler.as_view("any_unknown", val=False))
 
 app = Quart(import_name=__name__)
@@ -85,6 +87,10 @@ class ShortConnHandler(maica_http.ShortConnHandler):
         content = self.mtts_watcher.get_statics_inside()
 
         return self.jfy_res(content)
+    
+    async def get_defaults(self):
+        """GET, val=False"""
+        return self.jfy_res(TTSRequest.sanitize(TTSRequest.default_carriage))
 
 async def prepare_thread(**kwargs):
     auth_created = False; maica_created = False

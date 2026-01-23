@@ -33,7 +33,7 @@ MAICA-MTTS的通信只包含短连接, 因为流式传输意义不大, 处理也
 
     其中content为json格式的生成内容:
 
-    `{"text": "待生成语音的文本", "emotion": "表情", "target_lang": "zh", "persistence": 是否缓存, "lossless": 是否无损}`
+    `{"text": "待生成语音的文本", "emotion": "表情", "target_lang": "zh", "persistence": 是否缓存, "force_gen": 是否不使用缓存, "lossless": 是否无损, **kwargs}`
 
     * 其中text的长度建议控制在一到数个自然句内, 以控制表现.
 
@@ -44,8 +44,14 @@ MAICA-MTTS的通信只包含短连接, 因为流式传输意义不大, 处理也
 
     * persistence: 设为true会在服务端缓存, 仅各客户端间通用的条目应启用此功能(如不含[player]等字段). 默认true.
 
-    * lossless: 设为true会返回wav, 否则返回mp3. 默认false.
+    * force_gen: 设为true会不尝试通过已有缓存应答, 仅建议用于调试目的. 默认false.
+
+    * lossless: 设为true会返回wav, 否则返回mp3, 仅建议用于调试目的. 默认false.
     > 传输wav文件会产生高额流量开销, 发布版客户端不可使用.
+
+    * **kwargs: 高级参数, 直接穿透传入音频推理后端, 可用参数参考官方文档. 例如, "speed_factor"可控制语速.
+    > 当**kwargs存在时, persistence会强制设为false, force_gen强制设为true.  
+    > 出于安全考虑, 部分受保护的高级参数不可用.
 
 若请求成功, 端点仅返回对应的音频文件. 否则端点正常返回json.
 
@@ -87,3 +93,11 @@ MAICA-MTTS的通信只包含短连接, 因为流式传输意义不大, 处理也
 > 端点: GET `/workload`
 
 见MAICA文档.
+
+### 获取默认设置:
+
+> 端点: GET `/defaults`
+
+见MAICA文档.
+
+> 应当注意, 该端点返回的默认设置只是一部分超参数. 不含基本参数, 也不含未采用或不允许修改的超参数.
