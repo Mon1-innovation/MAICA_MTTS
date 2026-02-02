@@ -50,7 +50,7 @@ class TTSRequest(AsyncCreator):
 
     @staticmethod
     def sanitize(params: dict) -> dict:
-        unallowed = ('ref_audio_path', 'prompt_text', 'prompt_lang', 'streaming_mode')
+        unallowed = ('text', 'text_lang', 'ref_audio_path', 'prompt_text', 'prompt_lang', 'streaming_mode')
         return {k: v for k, v in params.items() if not k in unallowed}
 
     @property

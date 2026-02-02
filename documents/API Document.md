@@ -38,7 +38,7 @@ MAICA-MTTS的通信只包含短连接, 因为流式传输意义不大, 处理也
     * 其中text的长度建议控制在一到数个自然句内, 以控制表现.
 
     * emotion: 可使用MAICA的标准表情, 如"微笑". 具体见源码.
-    > emotion能起到的作用是有限的, 并不总能生成准确的语气. 设为与实际句子相符的值以改善表现.
+        > emotion能起到的作用是有限的, 并不总能生成准确的语气. 设为与实际句子相符的值以改善表现.
 
     * target_lang: 目标语言, 可选"zh"或"en".
 
@@ -47,11 +47,21 @@ MAICA-MTTS的通信只包含短连接, 因为流式传输意义不大, 处理也
     * force_gen: 设为true会不尝试通过已有缓存应答, 仅建议用于调试目的. 默认false.
 
     * lossless: 设为true会返回wav, 否则返回mp3, 仅建议用于调试目的. 默认false.
-    > 传输wav文件会产生高额流量开销, 发布版客户端不可使用.
+        > 传输wav文件会产生高额流量开销, 发布版客户端不可使用.
 
     * **kwargs: 高级参数, 直接穿透传入音频推理后端, 可用参数参考官方文档. 例如, "speed_factor"可控制语速.
-    > 当**kwargs存在时, persistence会强制设为false, force_gen强制设为true.  
-    > 出于安全考虑, 部分受保护的高级参数不可用.
+        > 当**kwargs存在时, persistence会强制设为false, force_gen强制设为true.  
+        > 出于安全考虑, 部分受保护的高级参数不可用.
+
+        以下是一部分常用的有效高级参数:
+
+        * repetition_penalty, 一定程度上控制平仄变化
+        * seed, 种子
+        * speed_factor, 一定程度上控制语速
+        * temperature, 一定程度上控制语气
+        * text_split_method, 控制长句切分方式
+        * top_k
+        * top_p
 
 若请求成功, 端点仅返回对应的音频文件. 否则端点正常返回json.
 
