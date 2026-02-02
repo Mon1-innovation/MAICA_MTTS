@@ -18,31 +18,35 @@ class TTSRequest(AsyncCreator):
     _real_path: str = ''
     _base_path: str = get_inner_path('fs_storage/mtts')
 
-    default_carriage = {
-        "text": self.text,                   # str.(required) text to be synthesized
-        "text_lang": self.target_lang,              # str.(required) language of the text to be synthesized
-        "ref_audio_path": f"mtts/{self.ref}.wav",         # str.(required) reference audio path
-        # "aux_ref_audio_paths": [],    # list.(optional) auxiliary reference audio paths for multi-speaker tone fusion
-        "prompt_text": G.T.REF_TEXT,            # str.(optional) prompt text for the reference audio
-        "prompt_lang": G.T.REF_LANG,            # str.(required) language of the prompt text for the reference audio
-        "top_k": 15,                   # int. top k sampling
-        "top_p": 1,                   # float. top p sampling
-        "temperature": 1,             # float. temperature for sampling
-        "text_split_method": "cut2",  # str. text split method, see text_segmentation_method.py for details.
-        # "batch_size": 1,              # int. batch size for inference
-        # "batch_threshold": 0.75,      # float. threshold for batch splitting.
-        # "split_bucket": True,         # bool. whether to split the batch into multiple buckets.
-        "speed_factor": 0.98,           # float. control the speed of the synthesized audio.
-        # "fragment_interval":0.3,      # float. to control the interval of the audio fragment.
-        "seed": 42,                   # int. random seed for reproducibility.
-        # "parallel_infer": True,       # bool. whether to use parallel inference.
-        # "repetition_penalty": 1.35,   # float. repetition penalty for T2S model.
-        # "sample_steps": 32,           # int. number of sampling steps for VITS model V3.
-        # "super_sampling": False,      # bool. whether to use super-sampling for audio when using VITS model V3.
-        # "streaming_mode": False,      # bool or int. return audio chunk by chunk.T he available options are: 0,1,2,3 or True/False (0/False: Disabled | 1/True: Best Quality, Slowest response speed (old version streaming_mode) | 2: Medium Quality, Slow response speed | 3: Lower Quality, Faster response speed )
-        # "overlap_length": 2,          # int. overlap length of semantic tokens for streaming mode.
-        # "min_chunk_length": 16,       # int. The minimum chunk length of semantic tokens for streaming mode. (affects audio chunk size)
-    }
+    text = target_lang = ref = ""
+
+    @property
+    def default_carriage(self):
+        return {
+            "text": self.text,                   # str.(required) text to be synthesized
+            "text_lang": self.target_lang,              # str.(required) language of the text to be synthesized
+            "ref_audio_path": f"mtts/{self.ref}.wav",         # str.(required) reference audio path
+            # "aux_ref_audio_paths": [],    # list.(optional) auxiliary reference audio paths for multi-speaker tone fusion
+            "prompt_text": G.T.REF_TEXT,            # str.(optional) prompt text for the reference audio
+            "prompt_lang": G.T.REF_LANG,            # str.(required) language of the prompt text for the reference audio
+            "top_k": 15,                   # int. top k sampling
+            "top_p": 1,                   # float. top p sampling
+            "temperature": 1,             # float. temperature for sampling
+            "text_split_method": "cut2",  # str. text split method, see text_segmentation_method.py for details.
+            # "batch_size": 1,              # int. batch size for inference
+            # "batch_threshold": 0.75,      # float. threshold for batch splitting.
+            # "split_bucket": True,         # bool. whether to split the batch into multiple buckets.
+            "speed_factor": 1.0,           # float. control the speed of the synthesized audio.
+            # "fragment_interval":0.3,      # float. to control the interval of the audio fragment.
+            "seed": 42,                   # int. random seed for reproducibility.
+            "parallel_infer": False,       # bool. whether to use parallel inference.
+            "repetition_penalty": 1.12,   # float. repetition penalty for T2S model.
+            # "sample_steps": 32,           # int. number of sampling steps for VITS model V3.
+            # "super_sampling": False,      # bool. whether to use super-sampling for audio when using VITS model V3.
+            # "streaming_mode": False,      # bool or int. return audio chunk by chunk.T he available options are: 0,1,2,3 or True/False (0/False: Disabled | 1/True: Best Quality, Slowest response speed (old version streaming_mode) | 2: Medium Quality, Slow response speed | 3: Lower Quality, Faster response speed )
+            # "overlap_length": 2,          # int. overlap length of semantic tokens for streaming mode.
+            # "min_chunk_length": 16,       # int. The minimum chunk length of semantic tokens for streaming mode. (affects audio chunk size)
+        }
 
     @staticmethod
     def sanitize(params: dict) -> dict:

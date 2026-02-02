@@ -90,7 +90,7 @@ class ShortConnHandler(maica_http.ShortConnHandler):
     
     async def get_defaults(self):
         """GET, val=False"""
-        return self.jfy_res(TTSRequest.sanitize(TTSRequest.default_carriage))
+        return self.jfy_res(TTSRequest.sanitize(TTSRequest("").default_carriage))
 
 async def prepare_thread(**kwargs):
     auth_created = False; maica_created = False
