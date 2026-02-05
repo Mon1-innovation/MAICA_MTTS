@@ -63,6 +63,18 @@ MAICA-MTTS的通信只包含短连接, 因为流式传输意义不大, 处理也
         * top_k
         * top_p
 
+        超参数有以下限制:
+
+        ```
+        0 <= float(repetition_penalty) <= 1
+        int(seed)
+        0.5 <= float(speed_factor) <= 2
+        0 <= float(temperature) <= 1
+        text_split_method in ('cut0', 'cut1', 'cut2', 'cut3', 'cut4', 'cut5')
+        1 <= top_k <= 20
+        0 < top_p <= 1
+        ```
+
 若请求成功, 端点仅返回对应的音频文件. 否则端点正常返回json.
 
 ### 在线执行验证:
