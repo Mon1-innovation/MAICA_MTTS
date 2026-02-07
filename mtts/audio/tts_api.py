@@ -11,6 +11,7 @@ import json
 from io import BytesIO
 from hashlib import md5
 from typing import *
+from maica.mtools import has_censored
 from maica.maica_utils import *
 
 class TTSRequest(AsyncCreator):
@@ -72,6 +73,16 @@ class TTSRequest(AsyncCreator):
             self.force_gen = True
         
     async def _ainit(self):
+        if G.T.CENSOR_QUERY != '0':
+            tolerance = int(G.A.CENSOR_QUERY)
+            query_censor = await has_censored(self.text)
+            if len(query_censor) >= tolerance:
+                sync_messenger(info=f"Query has censored words: {query_censor}", type=MsgType.DEBUG)
+                raise MaicaInputWarning("Input query has censored words or phrases", "403", "maica_input_query_censored")
+            
+            elif len(query_censor):
+                sync_messenger(info=f"Input query has censored words or phrases but ignored: {query_censor}", type=MsgType.DEBUG)
+
         self.identity = await self.calculate_tts_identity()
 
     @staticmethod
