@@ -19,7 +19,7 @@ from maica.mtools import NvWatcher
 from mtts.audio.tts_api import TTSRequest
 
 def pkg_init_mtts_http():
-    if G.A.FULL_RESTFUL == '1':
+    if int(G.A.FULL_RESTFUL):
         app.add_url_rule("/generate", methods=['GET'], view_func=ShortConnHandler.as_view("generate_tts"))
         app.add_url_rule("/register", methods=['GET'], view_func=ShortConnHandler.as_view("download_token", val=False))
         app.add_url_rule("/legality", methods=['GET'], view_func=ShortConnHandler.as_view("check_legality"))
