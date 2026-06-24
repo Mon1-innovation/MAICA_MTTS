@@ -1,0 +1,48 @@
+[build-system]
+requires = [
+    "setuptools>=77",
+    "wheel"
+]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "mi-mtts"
+
+dynamic = [
+    "version",
+    "dependencies",
+]
+
+authors = [
+    {name="EdgeInfinity", email="dcc@monika.love"}
+]
+
+description = "MAICA MTTS (Backend)"
+
+readme = "README.md"
+
+requires-python = ">=3.12"
+
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+]
+
+
+[tool.setuptools]
+include-package-data = true
+
+
+[tool.setuptools.packages.find]
+
+[tool.setuptools.package-data]
+mtts = [
+    "mtts_env_basis"
+]
+
+
+[tool.setuptools.dynamic]
+version = {attr = "mtts.version.__version__"}
+
+dependencies = {file = ["requirements.txt"]}
