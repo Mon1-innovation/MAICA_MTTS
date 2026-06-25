@@ -14,11 +14,11 @@ from typing import *
 from maica.mtools import has_censored
 from maica.maica_utils import *
 
+_base_path: str = get_inner_path('fs_storage/mtts')
+
 class TTSRequest(AsyncCreator):
     """Things what a TTS request has to do, packed up to get roasted."""
-    _real_path: str = ''
-    _base_path: str = get_inner_path('fs_storage/mtts')
-
+    identity: str = ''
     text = target_lang = ref = ""
 
     @property
@@ -56,7 +56,17 @@ class TTSRequest(AsyncCreator):
 
     @property
     def file_name(self):
-        return os.path.basename(self._real_path)
+        assert self.identity, "No identity for this instance"
+        return self.identity + ".wav"
+    
+    @property
+    def real_path(self):
+        return os.path.join(_base_path, self.file_name)
+
+    async def calculate_tts_identity(self):
+        text_hash = await wrap_run_in_exc(None, lambda: base64.urlsafe_b64encode(md5(self.text.encode()).digest()).decode("utf-8"))
+        self.identity = f'{self.target_lang}_{self.ref}_{text_hash}'
+        return self.identity
 
     def __init__(self, text, emotion='微笑', target_lang: Literal['zh', 'en']='zh', persistence=True, force_gen=False, lossless=False, **kwargs):
         self.url = G.T.TTS_ADDR
@@ -83,7 +93,7 @@ class TTSRequest(AsyncCreator):
             elif len(query_censor):
                 sync_messenger(info=f"Input query has censored words or phrases but ignored: {query_censor}", type=MsgType.DEBUG)
 
-        self.identity = await self.calculate_tts_identity()
+        await self.calculate_tts_identity()
 
     @staticmethod
     def proceed_tts_text(text: str):
@@ -104,12 +114,6 @@ class TTSRequest(AsyncCreator):
             case _:
                 ref = 'standard'
         return ref
-    
-    async def calculate_tts_identity(self):
-        text_hash = await wrap_run_in_exc(None, lambda: base64.urlsafe_b64encode(md5(self.text.encode()).digest()).decode("utf-8"))
-        identity = f'{self.target_lang}_{self.ref}_{text_hash}'
-        self._real_path = os.path.join(self._base_path, f"{identity}.wav")
-        return identity
 
     @Decos.conn_retryer_factory()
     async def _create_tts(self) -> BytesIO:
@@ -133,14 +137,14 @@ class TTSRequest(AsyncCreator):
     async def get_tts(self):
         """Manages TTS cache. Requires generation if none found."""
         sync_messenger(info=f"TTS handling content: {self.target_lang}, {self.ref}, {self.text}", type=MsgType.PRIM_RECV)
-        if os.path.isfile(self._real_path) and not self.force_gen:
-            with open(self._real_path, 'rb') as cache_file:
+        if os.path.isfile(self.real_path) and not self.force_gen:
+            with open(self.real_path, 'rb') as cache_file:
                 tts_bio = BytesIO(cache_file.read())
             sync_messenger(info="TTS cache hit", type=MsgType.DEBUG)
         else:
             tts_bio = await self._create_tts()
             if self.persistence:
-                with open(self._real_path, 'wb') as cache_file:
+                with open(self.real_path, 'wb') as cache_file:
                     cache_file.write(tts_bio.getbuffer())
                 sync_messenger(info="TTS generated and cached", type=MsgType.DEBUG)
             else:
