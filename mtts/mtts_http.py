@@ -49,9 +49,9 @@ class ShortConnHandler(maica_http.ShortConnHandler):
     """Flask initiates it on every request."""
 
     auth_pool: DbPoolManager = None
-    """Don't forget to implement at first!"""
+    """Don't forget to fill at first!"""
     maica_pool: DbPoolManager = None
-    """Don't forget to implement at first!"""
+    """Don't forget to fill at first!"""
     mtts_watcher: NvWatcher = None
 
     async def generate_tts(self):
