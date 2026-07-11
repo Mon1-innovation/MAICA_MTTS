@@ -59,11 +59,16 @@ class ShortConnHandler(maica_http.ShortConnHandler):
     nvwatchers: ClassVar[list[NvWatcher]] = []
     """This is class managed."""
 
+    _gt_m = maica_http.pyd_http_factory(
+        model_postfix="gt_m",
+        access_token=(str, ...),
+        content=(str, ...),
+    )
     async def generate_tts(self):
         """GET"""
-        json_data = request.args.to_dict(flat=True)
-        valid_data = await self.validate_http(json_data, must=['access_token', 'content'])
-        content = json.loads(valid_data.get('content'))
+        query = self.wrapped_validate(self._gt_m, request.args.to_dict(flat=True))
+
+        content = query.content
 
         # content:
         # text: 你好啊
@@ -72,11 +77,11 @@ class ShortConnHandler(maica_http.ShortConnHandler):
 
         tts_request = await TTSRequest.async_create(**content)
 
-        return_bio = await tts_request.get_tts()
+        result_b = await tts_request.get_tts()
         file_name = tts_request.file_name
 
         return await send_file(
-            return_bio,
+            result_b,
             as_attachment=True,
             attachment_filename=file_name
         )
