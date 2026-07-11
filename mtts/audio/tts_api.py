@@ -64,7 +64,7 @@ class TTSRequest(AsyncCreator):
         return os.path.join(_base_path, self.file_name)
 
     async def calculate_tts_identity(self):
-        text_hash = await wrap_run_in_exc(None, lambda: base64.urlsafe_b64encode(md5(self.text.encode()).digest()).decode("utf-8"))
+        text_hash = await asyncio.to_thread(lambda: base64.urlsafe_b64encode(md5(self.text.encode()).digest()).decode("utf-8"))
         self.identity = f'{self.target_lang}_{self.ref}_{text_hash}'
         return self.identity
 

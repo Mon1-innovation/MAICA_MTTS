@@ -18,6 +18,13 @@ from maica.maica_utils import *
 from maica.mtools import NvWatcher
 from mtts.audio.tts_api import TTSRequest
 
+_CONNS_LIST = []
+_WATCHES_LIST = ["tts"]
+
+
+# ====================================================== Initiation and registration ======================================================
+
+
 def pkg_init_mtts_http():
     if int(G.A.FULL_RESTFUL):
         app.add_url_rule("/generate", methods=['GET'], view_func=ShortConnHandler.as_view("generate_tts"))
@@ -41,6 +48,7 @@ def pkg_init_mtts_http():
 
 app = Quart(import_name=__name__)
 app.config['JSON_AS_ASCII'] = False
+app.config['MAX_CONTENT_LENGTH'] = 1 * 1024 * 1024
 
 quart_logger = logging.getLogger('hypercorn.error')
 quart_logger.disabled = True
@@ -48,11 +56,8 @@ quart_logger.disabled = True
 class ShortConnHandler(maica_http.ShortConnHandler):
     """Flask initiates it on every request."""
 
-    auth_pool: DbPoolManager = None
-    """Don't forget to fill at first!"""
-    maica_pool: DbPoolManager = None
-    """Don't forget to fill at first!"""
-    mtts_watcher: NvWatcher = None
+    nvwatchers: ClassVar[list[NvWatcher]] = []
+    """This is class managed."""
 
     async def generate_tts(self):
         """GET"""
@@ -81,65 +86,48 @@ class ShortConnHandler(maica_http.ShortConnHandler):
         curr_version, legc_version = G.T.CURR_VERSION, G.T.LEGC_VERSION
         synbrace_capv = G.T.SYNBRACE_CAPV
         return self.jfy_res({"curr_version": curr_version, "legc_version": legc_version, "fe_synbrace_version": synbrace_capv})
-
-    async def get_workload(self):
-        """GET, val=False"""
-        content = self.mtts_watcher.get_statics_inside()
-
-        return self.jfy_res(content)
     
     async def get_defaults(self):
         """GET, val=False"""
         return self.jfy_res(TTSRequest.sanitize(TTSRequest("").default_carriage))
 
 async def prepare_thread(**kwargs):
-    auth_created = False; maica_created = False
 
-    if kwargs.get('auth_pool'):
-        ShortConnHandler.auth_pool = kwargs.get('auth_pool')
-    else:
-        ShortConnHandler.auth_pool = await ConnUtils.auth_pool()
-        auth_created = True
-    if kwargs.get('maica_pool'):
-        ShortConnHandler.maica_pool = kwargs.get('maica_pool')
-    else:
-        ShortConnHandler.maica_pool = await ConnUtils.maica_pool()
-        maica_created = True
+    # Construct csc first
+    root_csc_kwargs = {k: kwargs.get(k) for k in _CONNS_LIST}
+    root_csc = ConnSocketsContainer(**root_csc_kwargs)
+    ShortConnHandler.root_csc = root_csc
+            
+    # Start watchers
+    _watch_start_list = []
+    for i in _WATCHES_LIST:
+        watcher = await NvWatcher.async_create(i, 'mtts')
+        ShortConnHandler.nvwatchers.append(watcher)
 
-    ShortConnHandler.mtts_watcher = await NvWatcher.async_create('tts', 'mtts')
-    mtts_task = asyncio.create_task(ShortConnHandler.mtts_watcher.wrapped_main_watcher())
-
-    config = Config()
-    config.bind = ['0.0.0.0:7000']
-
-    main_task = asyncio.create_task(serve(app, config))
-    task_list = [main_task, mtts_task]
-
-    await messenger(info='MTTS HTTP server started!', type=MsgType.PRIM_SYS)
+        _watch_start_list.append(asyncio.create_task(watcher.wrapped_main_watcher()))
 
     try:
+        config = Config()
+        config.bind = ['0.0.0.0:7000']
+        task = asyncio.create_task(serve(app, config))
+        
+        task_list = [task] + _watch_start_list
+
+        await messenger(info='MTTS HTTP server started!', type=MsgType.PRIM_SYS)
+
         await asyncio.wait(task_list, return_when=asyncio.FIRST_COMPLETED)
 
-    except BaseException as be:
-        if isinstance(be, Exception):
-            error = CommonMaicaError(str(be), '504')
-            await messenger(error=error, no_raise=True)
+    except Exception as e:
+        error = CommonMaicaError(str(e), '504')
+        sync_messenger(error=error, no_raise=True)
+
     finally:
-        close_list = []
-        if auth_created:
-            close_list.append(ShortConnHandler.auth_pool.close())
-        if maica_created:
-            close_list.append(ShortConnHandler.maica_pool.close())
 
-        await asyncio.gather(*close_list, return_exceptions=True)
-
-        # Normally maica_http should be the first one (possibly only one) to
-        # respond to the original SIGINT.
-
-        # So its stop msg will be print first, adding \n after ^C to look prettier.
-
-        await messenger(info='\n', type=MsgType.PLAIN)
         await messenger(info='MTTS HTTP server stopped!', type=MsgType.PRIM_SYS)
+
+
+# ====================================================== Debuggings ======================================================
+
 
 def run_http(**kwargs):
 
