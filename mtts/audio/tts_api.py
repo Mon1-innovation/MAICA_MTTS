@@ -17,7 +17,7 @@ from maica.maica_utils import *
 _base_path: str = get_inner_path('fs_storage/mtts')
 
 class TTSRequest(AsyncCreator):
-    """Things what a TTS request has to do, packed up to get roasted."""
+    """TTS request worker."""
     identity: str = ''
     text = target_lang = ref = ""
 

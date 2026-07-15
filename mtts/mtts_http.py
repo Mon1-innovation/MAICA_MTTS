@@ -118,17 +118,17 @@ async def prepare_thread(**kwargs):
         
         task_list = [task] + _watch_start_list
 
-        await messenger(info='MTTS HTTP server started!', type=MsgType.PRIM_SYS)
+        sync_messenger(info='MTTS HTTP server started!', type=MsgType.PRIM_SYS)
 
         await asyncio.wait(task_list, return_when=asyncio.FIRST_COMPLETED)
 
     except Exception as e:
         error = CommonMaicaError(str(e), '504')
-        sync_messenger(error=error, no_raise=True)
+        sync_messenger(error=error)
 
     finally:
 
-        await messenger(info='MTTS HTTP server stopped!', type=MsgType.PRIM_SYS)
+        sync_messenger(info='MTTS HTTP server stopped!', type=MsgType.PRIM_SYS)
 
 
 # ====================================================== Debuggings ======================================================
