@@ -2,7 +2,7 @@ from quart import Quart, request, jsonify, send_file, Response
 from quart.views import View
 import os
 import asyncio
-import json
+import orjson
 import traceback
 import time
 import colorama
@@ -66,9 +66,9 @@ class ShortConnHandler(maica_http.ShortConnHandler):
     )
     async def generate_tts(self):
         """GET"""
-        query = self.wrapped_validate(self._gt_m, request.args.to_dict(flat=True))
+        query = await self.wrapped_validate(self._gt_m, request.args.to_dict(flat=True))
 
-        content = query.content
+        content = orjson.loads(query.content)
 
         # content:
         # text: 你好啊
@@ -90,11 +90,11 @@ class ShortConnHandler(maica_http.ShortConnHandler):
         """GET, val=False"""
         curr_version, legc_version = G.T.CURR_VERSION, G.T.LEGC_VERSION
         synbrace_capv = G.T.SYNBRACE_CAPV
-        return self.jfy_res({"curr_version": curr_version, "legc_version": legc_version, "fe_synbrace_version": synbrace_capv})
+        return maica_http.jfy_res({"curr_version": curr_version, "legc_version": legc_version, "fe_synbrace_version": synbrace_capv})
     
     async def get_defaults(self):
         """GET, val=False"""
-        return self.jfy_res(TTSRequest.sanitize(TTSRequest("").default_carriage))
+        return maica_http.jfy_res(TTSRequest.sanitize(TTSRequest("").default_carriage))
 
 async def prepare_thread(shutdown_trigger=None, **kwargs):
 
