@@ -96,7 +96,7 @@ class ShortConnHandler(maica_http.ShortConnHandler):
         """GET, val=False"""
         return self.jfy_res(TTSRequest.sanitize(TTSRequest("").default_carriage))
 
-async def prepare_thread(**kwargs):
+async def prepare_thread(shutdown_trigger=None, **kwargs):
 
     # Construct csc first
     root_csc_kwargs = {k: kwargs.get(k) for k in _CONNS_LIST}
@@ -113,20 +113,41 @@ async def prepare_thread(**kwargs):
 
     try:
         config = Config()
-        config.bind = ['0.0.0.0:7000']
-        task = asyncio.create_task(serve(app, config))
-        
+        config.bind = [f'{G.T.HTTP_HOST}:{int(G.T.HTTP_PORT)}']
+        # Supplying the application-level trigger keeps Hypercorn from
+        # replacing the process-wide SIGTERM handler installed by the starter.
+        task = asyncio.create_task(
+            serve(app, config, shutdown_trigger=shutdown_trigger)
+        )
+
         task_list = [task] + _watch_start_list
 
         sync_messenger(info='MTTS HTTP server started!', type=MsgType.PRIM_SYS)
 
-        await asyncio.wait(task_list, return_when=asyncio.FIRST_COMPLETED)
+        done, pending = await asyncio.wait(task_list, return_when=asyncio.FIRST_COMPLETED)
+        for completed in done:
+            completed.result()
 
+    except asyncio.CancelledError:
+        raise
     except Exception as e:
         error = CommonMaicaError(str(e), '504')
         sync_messenger(error=error)
+        raise
 
     finally:
+        for running_task in [*locals().get('task_list', []), *_watch_start_list]:
+            if not running_task.done():
+                running_task.cancel()
+        await asyncio.gather(
+            *locals().get('task_list', []),
+            *_watch_start_list,
+            return_exceptions=True,
+        )
+        await asyncio.gather(
+            *(watcher.close() for watcher in ShortConnHandler.nvwatchers),
+            return_exceptions=True,
+        )
 
         sync_messenger(info='MTTS HTTP server stopped!', type=MsgType.PRIM_SYS)
 
