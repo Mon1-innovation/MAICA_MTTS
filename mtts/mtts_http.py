@@ -68,7 +68,10 @@ class ShortConnHandler(maica_http.ShortConnHandler):
         """GET"""
         query = await self.wrapped_validate(self._gt_m, request.args.to_dict(flat=True))
 
-        content = orjson.loads(query.content)
+        try:
+            content = orjson.loads(query.content)
+        except Exception as e:
+            raise MaicaInputWarning(f"content is not parsable json: {str(e)}", 400)
 
         # content:
         # text: 你好啊
