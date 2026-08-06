@@ -134,8 +134,7 @@ async def prepare_thread(shutdown_trigger=None, **kwargs):
     except asyncio.CancelledError:
         raise
     except Exception as e:
-        error = CommonMaicaError(str(e), '504')
-        sync_messenger(error=error)
+        sync_messenger(info="Uncaught error happened in mtts: ", code=504, error=e)
         raise
 
     finally:
