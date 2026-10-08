@@ -18,7 +18,7 @@ from maica.maica_utils import *
 from maica.mtools import NvWatcher
 from mtts.audio.tts_api import TTSRequest
 
-_CONNS_LIST = []
+_CONNS_LIST = ['mtts_conn']
 _WATCHES_LIST = ["tts"]
 
 
