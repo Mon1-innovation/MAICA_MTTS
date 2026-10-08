@@ -1,1 +1,0 @@
-source ../g_act.sh; cd ../GPT-SoVITS; python api_v2.py & source ../m_act.sh; cd ../MAICA_MTTS; python mtts.py
