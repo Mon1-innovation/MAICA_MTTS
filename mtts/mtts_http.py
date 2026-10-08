@@ -62,23 +62,16 @@ class ShortConnHandler(maica_http.ShortConnHandler):
     _gt_m = maica_http.pyd_http_factory(
         model_postfix="gt_m",
         access_token=(str, ...),
-        content=(str, ...),
+        content=(dict, ...), # Change this to dict from v1 to v2, to avoid string-nesting
     )
     async def generate_tts(self):
         """GET"""
         query = await self.wrapped_validate(self._gt_m, request.args.to_dict(flat=True))
 
-        try:
-            content = orjson.loads(query.content)
-        except Exception as e:
-            raise MaicaInputWarning(f"content is not parsable json: {str(e)}", 400)
+        # We use fsc here since it was inherited from maica, and used in verification
+        # Actual tts options are in content
 
-        # content:
-        # text: 你好啊
-        # emotion: 微笑
-        # target_lang: zh
-
-        tts_request = await TTSRequest.async_create(**content)
+        tts_request = await TTSRequest.async_create(**query.content)
 
         result_b = await tts_request.get_tts()
         file_name = tts_request.file_name

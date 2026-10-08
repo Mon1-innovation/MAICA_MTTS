@@ -33,6 +33,10 @@ MTTS_TTS_EXTRA = '
 
 # Rotate MTTS cache every [] hours or not
 MTTS_ROTATE_TTSCACHE = '168'
+# Precomputed voice character. Mutes all REF_... var if set
+MTTS_PREC_CHR = ''
+# Path to reference audio
+MTTS_REF_PATH = ''# file://..., https://...
 # TTS language of reference audio
 MTTS_REF_LANG = 'en'
 # TTS text of reference audio
