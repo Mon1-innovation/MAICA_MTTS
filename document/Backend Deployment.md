@@ -3,7 +3,8 @@ If you want to read in English, use a translator.
 
 此文档是MAICA-MTTS接口后端的部署文档, 编纂版本为v1.0.  
 请注意该程序是协调通信程序, 模型需要另行部署. 自v1.0后, 仓库提供自动的release.
-> 该项目使用[GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS)实现tts. 若你希望采用其它项目, 请自行修改源码逻辑.
+> 模型服务需要另行部署, 并通过OpenAI兼容的Speech API提供服务.
+> 对于官方服务, 我们采用微调的VoxCPM2.
 
 自v1.0后, MAICA-MTTS不再需要独立部署, 其新的实现方式是作为MAICA的可选依赖. 以下流程中均假设你已部署MAICA后端.
 

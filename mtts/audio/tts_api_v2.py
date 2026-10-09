@@ -3,20 +3,19 @@ The MTTS v2 inference allows usage of standard openai api (speech), so we adopt 
 """
 
 import asyncio
+import base64
+import json
+import os
+from typing import *
+from hashlib import md5
+from io import BytesIO
+from typing import Any
+
 import aiofiles
 import aiofiles.os
-import httpx
-import base64
-import os
-import pydub
-import json
-
-from io import BytesIO
-from hashlib import md5
-from typing import *
-from pydantic import BaseModel, Field, model_validator
-from maica.mtools import has_censored
 from maica.maica_utils import *
+from maica.mtools import has_censored
+from pydantic import BaseModel, Field, model_validator
 
 _base_path: str = get_inner_path('fs_storage/mtts')
 
@@ -29,8 +28,10 @@ class TTSRequestV2(AsyncCreator):
         @classmethod
         def text_to_rt(cls, data: Any):
             if isinstance(data, dict):
-                data["raw_text"] = data.pop("text")
-                
+                data = data.copy()
+                if "text" in data:
+                    data["raw_text"] = data.pop("text")
+
             return data
 
     class StdContent(BaseModel):
@@ -53,7 +54,7 @@ class TTSRequestV2(AsyncCreator):
     @staticmethod
     async def hash_unique(*essentials):
         """Create unique hash according to all given essentials."""
-        id_string = "|".join(essentials)
+        id_string = "|".join(str(item) for item in essentials)
         uq_hash = await asyncio.to_thread(lambda: base64.urlsafe_b64encode(md5(id_string.encode()).digest()).decode("utf-8"))
         return uq_hash
 
@@ -73,15 +74,20 @@ class TTSRequestV2(AsyncCreator):
             # This content is a dict including text, not text itself
             content: dict,
         ):
-        ess_content = self.EssContent.model_validate(content)
-        std_content = self.StdContent.model_validate(content)
+        try:
+            ess_content = self.EssContent.model_validate(content)
+            std_content = self.StdContent.model_validate(content)
+            super_content = self.Super.model_validate(content)
+        except Exception as exc:
+            raise MaicaInputWarning(f"Query parsing failed: {exc}") from exc
+
         self.fsc = fsc
 
         self.text = self.proceed_tts_text(ess_content.raw_text)
         self.emo_prompt = self.emotion_mapping(std_content.emotion)
         self.persistent = std_content.persistent
 
-        self.super = self.Super.model_validate(content)
+        self.super = super_content
 
     async def _ainit(self):
         # We don't want to actually cache requests with active supers, but we impl it anyway
@@ -92,12 +98,12 @@ class TTSRequestV2(AsyncCreator):
         self.uq_hash = await self.hash_unique(*essentials)
 
         if G.T.CENSOR_QUERY != '0':
-            tolerance = int(G.A.CENSOR_QUERY)
+            tolerance = int(G.T.CENSOR_QUERY)
             query_censor = await has_censored(self.text)
             if len(query_censor) >= tolerance:
                 sync_messenger(info=f"Query has censored words: {query_censor}", type=MsgType.DEBUG)
                 raise MaicaInputWarning("Input query has censored words or phrases", "403", "maica_input_query_censored")
-            
+
             elif len(query_censor):
                 sync_messenger(info=f"Input query has censored words or phrases but ignored: {query_censor}", type=MsgType.DEBUG)
 
@@ -121,7 +127,6 @@ class TTSRequestV2(AsyncCreator):
         # This normally does not perform well, so mute for now
         return ""
 
-    # Retrying mech is no longer required in V2 worker, since already handled by connection_utils of maica
     async def _generate_speech(self) -> BytesIO:
         conn = self.fsc.mtts_conn
         if not conn:
@@ -177,7 +182,7 @@ class TTSRequestV2(AsyncCreator):
 
 
     async def tts(self):
-        resp_bio = await self._get_cache()
+        resp_bio = None if self.super.no_cache else await self._get_cache()
 
         if not resp_bio:
             resp_bio = await self._gen_and_store()

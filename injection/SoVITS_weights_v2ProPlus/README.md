@@ -1,1 +1,0 @@
-Put `*.pth` weights file here!

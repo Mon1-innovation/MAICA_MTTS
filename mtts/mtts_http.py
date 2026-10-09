@@ -1,21 +1,14 @@
-from quart import Quart, request, jsonify, send_file, Response
-from quart.views import View
-import os
 import asyncio
-import orjson
-import traceback
-import time
-import colorama
 import logging
+from typing import ClassVar
 
-from hypercorn.config import Config
 from hypercorn.asyncio import serve
-from typing import *
-
+from hypercorn.config import Config
 from maica import maica_http
-from maica.maica_ws import NoWsCoroutine
 from maica.maica_utils import *
 from maica.mtools import NvWatcher
+from quart import Quart, request, send_file
+
 from mtts.audio.tts_api_v2 import TTSRequestV2
 
 _CONNS_LIST = ['mtts_conn']
@@ -62,7 +55,10 @@ class ShortConnHandler(maica_http.ShortConnHandler):
     _gt_m = maica_http.pyd_http_factory(
         model_postfix="gt_m",
         access_token=(str, ...),
-        content=(dict, ...), # Change this to dict from v1 to v2, to avoid string-nesting
+        content=(dict, ...),
+        __validators__={
+            "get_json": maica_http._get_json,
+        },
     )
     async def generate_tts(self):
         """GET"""

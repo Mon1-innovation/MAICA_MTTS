@@ -34,7 +34,6 @@ MAICA-MTTS的通信只包含短连接, 因为流式传输意义不大, 处理也
     其中content是待生成内容及参数:
 
     `{"text": "待生成语音的文本", "target_lang": "zh", "emotion": "表情", "persistent": 是否缓存, **kwargs}`
-    > 应当是dict, 而不是V1使用的json字符串.
 
     * 其中text的长度建议控制在一到数个自然句内, 以控制表现.
 
