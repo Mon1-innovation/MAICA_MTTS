@@ -3,6 +3,8 @@ The MTTS v2 inference allows usage of standard openai api (speech), so we adopt 
 """
 
 import asyncio
+import aiofiles
+import aiofiles.os
 import httpx
 import base64
 import os
@@ -20,12 +22,15 @@ _base_path: str = get_inner_path('fs_storage/mtts')
 
 class TTSRequestV2(AsyncCreator):
     """The carrier of a V2 tts request."""
+    class EssContent(BaseModel):
+        raw_text: str
 
     class StdContent(BaseModel):
-        raw_text: str
         emotion: Optional[str] = None
+        persistent: bool = True
 
     class Super(BaseModel):
+        no_cache: bool = False
         lossless: bool = False
         speed: float = Field(
             ge=0.25,
@@ -60,11 +65,13 @@ class TTSRequestV2(AsyncCreator):
             # This content is a dict including text, not text itself
             content: dict,
         ):
+        ess_content = self.EssContent.model_validate(content)
         std_content = self.StdContent.model_validate(content)
         self.fsc = fsc
 
-        self.text = self.proceed_tts_text(std_content.raw_text)
+        self.text = self.proceed_tts_text(ess_content.raw_text)
         self.emo_prompt = self.emotion_mapping(std_content.emotion)
+        self.persistent = std_content.persistent
 
         self.super = self.Super.model_validate(content)
 
@@ -93,6 +100,10 @@ class TTSRequestV2(AsyncCreator):
         text = text.strip()
         text = ReUtils.re_sub_multi_spaces.sub(' ', text)
         text = ReUtils.re_sub_ellipsis.sub('…', text)
+
+        if not text or text.isspace():
+            raise MaicaInputWarning("TTS text is blank")
+
         return text
 
     @staticmethod
@@ -125,8 +136,41 @@ class TTSRequestV2(AsyncCreator):
             }
         }
 
+        resp = await conn.make_speech(**speech_args)
+        return BytesIO(resp.content)
+
+    async def _gen_and_store(self) -> BytesIO:
+        resp_bio = await self._generate_speech()
+
+        # Uncomment & comment below to allow caching super-tweaked results
+        # if False:
+        if self.super.modified:
+            sync_messenger(info="TTS result not cached due to modified super params", type=MsgType.DEBUG)
+
+        else:
+            if self.persistent:
+                async with aiofiles.open(self.real_path, 'wb') as cache_file:
+                    await cache_file.write(resp_bio.getbuffer())
+                sync_messenger(info="TTS generated and cached", type=MsgType.DEBUG)
+            else:
+                sync_messenger(info="TTS generated temporarily", type=MsgType.DEBUG)
+
+        return resp_bio
+
+    async def _get_cache(self) -> Optional[BytesIO]:
+        resp = None
+
+        file_exists = await aiofiles.os.path.isfile(self.real_path)
+        if file_exists:
+            async with aiofiles.open(self.real_path, 'rb') as cache_file:
+                resp = BytesIO(await cache_file.read())
+
+        return resp
 
 
+    async def tts(self):
+        resp_bio = await self._get_cache()
 
-
-
+        if not resp_bio:
+            resp_bio = await self._gen_and_store()
+        return resp_bio

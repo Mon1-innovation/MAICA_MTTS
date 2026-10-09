@@ -16,7 +16,7 @@ from maica import maica_http
 from maica.maica_ws import NoWsCoroutine
 from maica.maica_utils import *
 from maica.mtools import NvWatcher
-from mtts.audio.tts_api import TTSRequest
+from mtts.audio.tts_api_v2 import TTSRequestV2
 
 _CONNS_LIST = ['mtts_conn']
 _WATCHES_LIST = ["tts"]
@@ -71,15 +71,15 @@ class ShortConnHandler(maica_http.ShortConnHandler):
         # We use fsc here since it was inherited from maica, and used in verification
         # Actual tts options are in content
 
-        tts_request = await TTSRequest.async_create(**query.content)
+        tts_request = await TTSRequestV2.async_create(self.fsc, query.content)
 
-        result_b = await tts_request.get_tts()
+        resp_bio = await tts_request.tts()
         file_name = tts_request.file_name
 
         return await send_file(
-            result_b,
+            resp_bio,
             as_attachment=True,
-            attachment_filename=file_name
+            attachment_filename=file_name,
         )
 
     async def get_version(self):
@@ -90,7 +90,11 @@ class ShortConnHandler(maica_http.ShortConnHandler):
     
     async def get_defaults(self):
         """GET, val=False"""
-        return maica_http.jfy_res(TTSRequest.sanitize(TTSRequest("").default_carriage))
+        default_std = TTSRequestV2.StdContent().model_dump()
+        default_super = TTSRequestV2.Super().model_dump()
+        defaults = default_std | default_super
+        
+        return maica_http.jfy_res(defaults)
 
 async def prepare_thread(shutdown_trigger=None, **kwargs):
 
