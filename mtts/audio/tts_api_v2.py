@@ -14,7 +14,7 @@ import json
 from io import BytesIO
 from hashlib import md5
 from typing import *
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from maica.mtools import has_censored
 from maica.maica_utils import *
 
@@ -24,6 +24,14 @@ class TTSRequestV2(AsyncCreator):
     """The carrier of a V2 tts request."""
     class EssContent(BaseModel):
         raw_text: str
+
+        @model_validator(mode="before")
+        @classmethod
+        def text_to_rt(cls, data: Any):
+            if isinstance(data, dict):
+                data["raw_text"] = data.pop("text")
+                
+            return data
 
     class StdContent(BaseModel):
         emotion: Optional[str] = None
